@@ -5,9 +5,18 @@ var util = require('util');
 
 
 function PlayerServer() {
+    var self = this;
     this.server = net.createServer(function(player) {
-        //TODO
+    	player.on('data',function(data) {
+		var connection = JSON.parse(data);
+			if(connection.type == 'REGISTER')  {
+				self.emit('register',player,connection.student_id);
+			} else if(connection.type == 'MOVE') {
+				self.emit('move',player,connection);
+			}
+		});
     });
+    
 }
 util.inherits(PlayerServer, events.EventEmitter);
 
@@ -18,12 +27,12 @@ PlayerServer.prototype.onInput = function(player, data) {
 
 
 PlayerServer.prototype.listen = function(port) {
-    //TODO
+    this.server.listen(port);
 }
 
 
 PlayerServer.prototype.close = function() {
-    //TODO
+    this.server.close();
 }
 
 
