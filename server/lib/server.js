@@ -78,6 +78,8 @@ Server.prototype.getNextColour = function()
     return colour;
 }
 
+//listens to register events from the player server and
+//adds the player to the game server
 Server.prototype.register = function()
 {
 	var self = this;
@@ -89,6 +91,8 @@ Server.prototype.register = function()
 	});
 }
 
+//listens to move events from the player server and
+// passses move to game server
 Server.prototype.move = function()
 {
 	var self = this;
@@ -99,39 +103,4 @@ Server.prototype.move = function()
 }
 
 module.exports = Server;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
