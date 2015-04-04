@@ -2,15 +2,19 @@ package player;
 
 import java.util.*;
 import java.lang.Math;
-
 import scotlandyard.*;
 import solution.*;
+
+/* An AI to play as MrX X in a game of scotlandYard currently 
+ * the AI makes random moves. A function that scores the board is
+ * implemented but not currently used. DAN - talk to me about the MrXMoves 
+ * param of score - its implementaton is important!!!!! 
+ */
 
 class MyAIPlayer implements Player
 {
 	private Graph<Integer, Route> graph;
-	private ScotlandYardModel tempModel; //for testing
-	private List<MoveTicket> tempMoves = new ArrayList<MoveTicket>(); //for testing
+	private ScotlandYardModel model;
     
 	//Initialises graph 
 	//TODO Dan i'm not sure if this constructor is fixed i.e. you could
@@ -20,11 +24,11 @@ class MyAIPlayer implements Player
 		ScotlandYardGraphReader reader = new ScotlandYardGraphReader();
 		try { graph = reader.readGraph(graphFilename); } 
 		catch(Exception e) { System.err.println(e.getMessage()); }
-		this.tempModel = (ScotlandYardModel) view;
+		this.model = (ScotlandYardModel) view;
     }
     
-    //TODO this needs to be implemented in the next part
-    //currently it contains test code
+    //TODO this needs to be implemented in the next part (part 4)
+    //currently it contains code that makes a random move
     public Move notify(int location, Set<Move> moves) 
     {
     	int choice = new Random().nextInt(moves.size());
@@ -32,47 +36,39 @@ class MyAIPlayer implements Player
         {
             if (choice == 0) 
             {
-               //test code
-            	System.out.println(possibleLocations(tempModel, tempMoves));
-                System.out.println("MrX played	" + move.toString());
-                
-                if (move instanceof MoveDouble) 
-        		{
-        			MoveDouble moveDouble = (MoveDouble) move;
-        			tempMoves.add(moveDouble.move1);
-        			tempMoves.add(moveDouble.move2);
-        		}
-                else tempMoves.add((MoveTicket) move);
-                //end of test code
-                return move;
+            	movesAwayFromDetectives(location, model);
+            	return move;
             }
             choice--;
         }
-
         return null;
     }
     
     //A rough board scoring function - weights of relatve components still
-    // to be sorted out 
-    public double score(ScotlandYardModel model, int mrXLocation)
+    // to be sorted out NOTE: @param mrXMoves MUST only contains moveTickets - it should not contains
+    //MovePass as then the game would be over and and double moves mrX plays should be inserted
+    //as 2 separate moveTickets
+    public double score(ScotlandYardModel model, int mrXLocation, List<MoveTicket> mrXMoves)
     {
     	List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
-    	System.out.println("detective diatances -> " + movesAwayFromDetectives);
+    	int closesedDetective = Collections.min(movesAwayFromDetectives);
+    	Set<Integer> possibleLoctions = possibleLocations(model, mrXMoves);
     	double score = 0;
     	score += orderOfNode(mrXLocation);
     	score += adjacentNodeOrder(mrXLocation);
     	score -= distanceFromCenter(mrXLocation) / 100;
-    	int closesedDetective = Collections.min(movesAwayFromDetectives);
-    	if(closesedDetective == 1) score += -100;
-    	else if(closesedDetective == 0) score += -1000;
-    	else score += 5 * closesedDetective;
     	score += 2 * average(movesAwayFromDetectives);
     	score += model.getPlayerTickets(Colour.Black, Ticket.Secret);
     	score += model.getPlayerTickets(Colour.Black, Ticket.Double);
+    	score += possibleLoctions.size();
+    	score += howSpreadOut(possibleLoctions) / 1000;
+    	if(closesedDetective == 1) score += -100;
+    	else if(closesedDetective == 0) score += -1000;
+    	else score += 5 * closesedDetective;
     	return score;
     }
     
-    // returns the order of node
+    // returns the order of @param node
     private int orderOfNode(int node)
     {
     	return graph.getEdgesFrom(node).size();
@@ -91,26 +87,22 @@ class MyAIPlayer implements Player
     }
     
     // returns list of integers representing number of moves away
-    // each detective is not considering tickets (this took too long)
+    // each detective is not considering tickets (this took too long to run) except 
+    // disregarding boat edges
     private List<Integer> movesAwayFromDetectives(int mrXLocation, ScotlandYardModel model)
     {
     	Set<Integer> visited = new HashSet<Integer>();
     	Set<Integer> detectiveLocations = detectiveLocations(model);
-    	int numDetectives =  detectiveLocations.size();
     	Set<Integer> locations = new HashSet<Integer>();
     	List<Integer> detectiveMovesAway = new ArrayList<Integer>();
     	locations.add(mrXLocation);
-    	for(int i = 0; detectiveMovesAway.size() < numDetectives; i++)
+    	for(int i = 0; detectiveMovesAway.size() < detectiveLocations.size(); i++)
     	{
     		Set<Integer> tempLocations = new HashSet<Integer>();
     		visited.addAll(locations);
     		for(int location : locations)
     		{
-    			if(detectiveLocations.contains(location))
-    			{
-    				detectiveMovesAway.add(i);
-    				detectiveLocations.remove(location);
-    			}
+    			if(detectiveLocations.contains(location)) detectiveMovesAway.add(i);
     			Set<Edge<Integer, Route>> edges = graph.getEdgesFrom(location);
     			for(Edge<Integer, Route> edge : edges)
     			{
@@ -120,7 +112,21 @@ class MyAIPlayer implements Player
     		}
     		locations = tempLocations;
     	}
+    	System.out.println(detectiveMovesAway);
     	return detectiveMovesAway;
+    }
+    
+  //returns the locations of all the detectives
+    private Set<Integer> detectiveLocations(ScotlandYardModel model)
+    {
+    	List<Colour> players = model.getPlayers();
+    	Set<Integer> detectiveLocations = new HashSet<Integer>();
+    	for(Colour player : players)
+    	{
+    		if(player.equals(Colour.Black)) continue;
+    		detectiveLocations.add(model.getPlayerLocation(player));
+    	}
+    	return detectiveLocations;
     }
     
     //returns the possible locations mrX could be for @param model having played @param
@@ -141,21 +147,6 @@ class MyAIPlayer implements Player
     	return possibleLocations;
     }
     
-    //returns the last round that has been played that was a show round
-    private int getLastShowRond(ScotlandYardModel model)
-    {
-    	int currentRound = model.getRound();
-    	List<Boolean> rounds = model.getRounds();
-    	int lastShowRound = currentRound;
-    	while(true)
-    	{
-    		if(rounds.get(lastShowRound) || lastShowRound == 0) break;
-    		else lastShowRound --;
-    	}
-    	return lastShowRound;
-    }
-    
-    
     //returns the possible locations mrX could be if he was known to be at one of the 
     //@param nodes and used a @param moveTicket  
     private Set<Integer> possibleLocations2(MoveTicket moveTicket, Set<Integer> nodes)
@@ -173,8 +164,22 @@ class MyAIPlayer implements Player
     	return newPossibleNodes;
     }
     
+    //returns the last round that has been played that was a show round
+    private int getLastShowRond(ScotlandYardModel model)
+    {
+    	int currentRound = model.getRound();
+    	List<Boolean> rounds = model.getRounds();
+    	int lastShowRound = currentRound;
+    	while(true)
+    	{
+    		if(rounds.get(lastShowRound) || lastShowRound == 0) break;
+    		else lastShowRound --;
+    	}
+    	return lastShowRound;
+    }
+    
     //returns the approximate area ocupied by the @param nodes
-    public int howSreadOut(Set<Integer> nodes)
+    public int howSpreadOut(Set<Integer> nodes)
     {
     	PositionsReader reader = new PositionsReader("resources/pos.txt");
 		try { reader.read(); }
@@ -185,24 +190,11 @@ class MyAIPlayer implements Player
 		{
 			PositionsReader.Point point = reader.getPositionNode(node);
 			if(point.x > maxX) maxX = point.x;
-			else if(point.x < minX) minX = point.x;
-			else if(point.y > maxY) maxY = point.y;
-			else if(point.y < minY) minY = point.y;
+			if(point.x < minX) minX = point.x;
+			if(point.y > maxY) maxY = point.y;
+			if(point.y < minY) minY = point.y;
 		}
 		return (maxX - minX) * (maxY - minY);
-    }
-    
-    //returns the locations of all the detectives
-    private Set<Integer> detectiveLocations(ScotlandYardModel model)
-    {
-    	List<Colour> players = model.getPlayers();
-    	Set<Integer> detectiveLocations = new HashSet<Integer>();
-    	for(Colour player : players)
-    	{
-    		if(player.equals(Colour.Black)) continue;
-    		detectiveLocations.add(model.getPlayerLocation(player));
-    	}
-    	return detectiveLocations;
     }
     
     //takes average of list of integers
@@ -216,39 +208,16 @@ class MyAIPlayer implements Player
     	return total / list.size();
     }
     
-    // finds the start line distance a point is from the center 
-    //approximating centre as point 113
+    // finds the straight line distance a point is from the center 
+    // of the board approximating the centre as point 113
     private double distanceFromCenter(int node)
     {
     	PositionsReader reader = new PositionsReader("resources/pos.txt");
-		try
-		{
-			reader.read();
-		}
-		catch(Exception e)
-		{
-			System.err.println(e);
-		}
+		try { reader.read(); }
+		catch(Exception e) { System.err.println(e); }
 		PositionsReader.Point point = reader.getPositionNode(node);
 		int xDistance = point.x - 468;
 		int yDistance = point.y - 413;
 		return Math.sqrt(xDistance * xDistance + yDistance * yDistance);
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

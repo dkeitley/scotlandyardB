@@ -2,12 +2,13 @@ package player;
 
 import scotlandyard.*;
 import solution.*;
+import gui.Gui;
 
 import java.util.*;
 
 class ModelCreator
 {	
-	public static void main(String[] args)
+	public static void main(String[] args) throws Exception
 	{
 		//number of detectives; show rounds as a comma seperated list
 		ScotlandYardModel model = createModel(2, "0,3,5,8");
@@ -24,13 +25,25 @@ class ModelCreator
 		model.join(new RandomPlayer(), Colour.Red, 171, ticketMapDetective1);
 		model.join(new RandomPlayer(), Colour.Blue, 60, ticketMapDetective2);
 		
-		int numTurns = 12;
+		 Gui gui = new Gui(model, "resources/map.jpg", "resources/pos.txt");
+		 gui.run();
 		
 		while(!model.isGameOver())
 		{
 			model.turn();
+			gui.notify(model.getPlayerMove(getPreviousPlayer(model)));
+			gui.update();
 		}
+		
 		System.out.println(model.getWinningPlayers() + " won");
+	}
+	
+	private static Colour getPreviousPlayer(ScotlandYardModel model)
+	{
+		List<Colour> players = model.getPlayers();
+		int index = players.indexOf(model.getCurrentPlayer());
+		if(index == 0) return players.get(players.size() - 1);
+		else return players.get(index - 1);
 	}
 	
 	private static Map<Ticket, Integer> createTicketMap(boolean mrX, int taxi, int bus, int underground, int doubleMoves, int secret)
