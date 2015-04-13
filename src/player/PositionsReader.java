@@ -7,22 +7,6 @@ import java.util.List;
 
 class PositionsReader
 {
-	public static void main(String[] args)
-	{
-		Positions test = new Positions("resources/pos.txt");
-		try
-		{
-			test.read();
-		}
-		catch(Exception e)
-		{
-			
-		};
-		System.out.println(test.getPositionNode(100).y);
-	}
-	
-	
-	
 	
 	private List<String> positions;
 	private String fileName;
