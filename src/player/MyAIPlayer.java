@@ -31,37 +31,77 @@ class MyAIPlayer implements Player
     //currently it contains code that makes a random move
     public Move notify(int location, Set<Move> moves) 
     {
-    	int choice = new Random().nextInt(moves.size());
-        for (Move move : moves) 
-        {
-            if (choice == 0) 
-            {
-            	movesAwayFromDetectives(location, model);
-            	return move;
+    /*
+    int choice = new Random().nextInt(moves.size());
+        for (Move move : moves) {
+            if (choice == 0) {
+                return move;
             }
             choice--;
         }
+
         return null;
+    */
+    	System.out.println("Entered function");
+   	Move bestMove = null;
+   	double highestScore = -999;
+   	double score;
+   	for(Move move:moves) {
+   		System.out.println("Entered Loop");
+		score = getScore(model,move,location);
+		System.out.println("Score equals: " + score);
+		
+		System.out.println(score);
+		if(score > highestScore) {
+			highestScore = score;
+			bestMove = move;
+		}
+   	}
+   	return bestMove;
+   	
+   }
+
+    private double getScore(ScotlandYardModel currentModel, Move move, int location) {
+    	//creates a new game state as if move was made. 
+    	//passes this game state to the score function
+    	GameState newState;
+    	if(move instanceof MoveTicket) {
+    		MoveTicket moveTicket = (MoveTicket)move;
+    		newState = new GameState(currentModel,moveTicket,location);
+    	} else if (move instanceof MoveDouble) {
+    		MoveDouble doubleMove = (MoveDouble) move;
+		newState = new GameState(currentModel, doubleMove.move2,doubleMove.move1.target); 
+    	} else {
+		newState = new GameState(currentModel,location);
+    	}
+    	System.out.println("GameState created");
+    	return score(newState,location);
     }
     
     //A rough board scoring function - weights of relatve components still
     // to be sorted out NOTE: @param mrXMoves MUST only contains moveTickets - it should not contains
     //MovePass as then the game would be over and and double moves mrX plays should be inserted
     //as 2 separate moveTickets
-    public double score(ScotlandYardModel model, int mrXLocation, List<MoveTicket> mrXMoves)
+    public double score(GameState state, int mrXLocation /*List<MoveTicket> mrXMoves*/)
     {
-    	List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
+    	System.out.println("Entered Score");
+    	List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, state);
+	System.out.println("movesAwayFromDetectives calculated: " + movesAwayFromDetectives);
     	int closesedDetective = Collections.min(movesAwayFromDetectives);
-    	Set<Integer> possibleLoctions = possibleLocations(model, mrXMoves);
+
+    	//Set<Integer> possibleLoctions = possibleLocations(model, mrXMoves);
     	double score = 0;
     	score += orderOfNode(mrXLocation);
+
     	score += adjacentNodeOrder(mrXLocation);
+
     	score -= distanceFromCenter(mrXLocation) / 100;
+
     	score += 2 * average(movesAwayFromDetectives);
-    	score += model.getPlayerTickets(Colour.Black, Ticket.Secret);
-    	score += model.getPlayerTickets(Colour.Black, Ticket.Double);
-    	score += possibleLoctions.size();
-    	score += howSpreadOut(possibleLoctions) / 1000;
+    	score += state.getPlayerTickets(Colour.Black, Ticket.Secret);
+    	score += state.getPlayerTickets(Colour.Black, Ticket.Double);
+    	//score += possibleLoctions.size();
+    	//score += howSpreadOut(possibleLoctions) / 1000;
     	if(closesedDetective == 1) score += -100;
     	else if(closesedDetective == 0) score += -1000;
     	else score += 5 * closesedDetective;
@@ -89,10 +129,12 @@ class MyAIPlayer implements Player
     // returns list of integers representing number of moves away
     // each detective is not considering tickets (this took too long to run) except 
     // disregarding boat edges
-    private List<Integer> movesAwayFromDetectives(int mrXLocation, ScotlandYardModel model)
+    private List<Integer> movesAwayFromDetectives(int mrXLocation, GameState state)
     {
     	Set<Integer> visited = new HashSet<Integer>();
-    	Set<Integer> detectiveLocations = detectiveLocations(model);
+    	System.out.println("movessAway function entered");
+    	Set<Integer> detectiveLocations = detectiveLocations(state);
+    	System.out.println("detective locations calculated: " + detectiveLocations);
     	Set<Integer> locations = new HashSet<Integer>();
     	List<Integer> detectiveMovesAway = new ArrayList<Integer>();
     	locations.add(mrXLocation);
@@ -103,13 +145,19 @@ class MyAIPlayer implements Player
     		for(int location : locations)
     		{
     			if(detectiveLocations.contains(location)) detectiveMovesAway.add(i);
+    			System.out.println("locations loop entered");
     			Set<Edge<Integer, Route>> edges = graph.getEdgesFrom(location);
+    			System.out.println("edges set created: " + edges);
     			for(Edge<Integer, Route> edge : edges)
     			{
+    				System.out.println("edge loop entered");
     				if(visited.contains(edge.target()) || edge.data().equals(Route.Boat)) continue;
     				tempLocations.add(edge.target());
+    				System.out.println("added to tempLocations");	
     			}
+    			System.out.println("End of location loop");	
     		}
+    		//System.out.println("Line 160");
     		locations = tempLocations;
     	}
     	System.out.println(detectiveMovesAway);
@@ -117,14 +165,14 @@ class MyAIPlayer implements Player
     }
     
   //returns the locations of all the detectives
-    private Set<Integer> detectiveLocations(ScotlandYardModel model)
+    private Set<Integer> detectiveLocations(GameState state)
     {
-    	List<Colour> players = model.getPlayers();
+    	List<Colour> players = state.getPlayers();
     	Set<Integer> detectiveLocations = new HashSet<Integer>();
     	for(Colour player : players)
     	{
     		if(player.equals(Colour.Black)) continue;
-    		detectiveLocations.add(model.getPlayerLocation(player));
+    		detectiveLocations.add(state.getPlayerLocation(player));
     	}
     	return detectiveLocations;
     }
