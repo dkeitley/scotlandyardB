@@ -8,14 +8,13 @@ import scotlandyard.ScotlandYardView;
 import scotlandyard.Spectator;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+
+import java.util.*;
 
 
 public class AIPlayerFactory implements PlayerFactory {
     protected Map<Colour, PlayerType> typeMap;
+    protected Set<Colour> colours; 
 
     public enum PlayerType {AI, GUI}
 
@@ -38,6 +37,13 @@ public class AIPlayerFactory implements PlayerFactory {
         imageFilename     = "resources/map.jpg";
 
         spectators = new ArrayList<Spectator>();
+        colours = new HashSet<Colour>();
+        colours.add(Colour.Black);
+        colours.add(Colour.Blue);
+        colours.add(Colour.Green);
+        colours.add(Colour.Red);
+        colours.add(Colour.White);
+        colours.add(Colour.Yellow); 
     }
 
     public AIPlayerFactory(Map<Colour, PlayerType> typeMap, String imageFilename, String positionsFilename) {
@@ -45,17 +51,25 @@ public class AIPlayerFactory implements PlayerFactory {
         this.imageFilename = imageFilename;
         this.positionsFilename = positionsFilename;
         spectators = new ArrayList<Spectator>();
+
+        colours = new HashSet<Colour>();
+        colours.add(Colour.Black);
+        colours.add(Colour.Blue);
+        colours.add(Colour.Green);
+        colours.add(Colour.Red);
+        colours.add(Colour.White);
+        colours.add(Colour.Yellow); 
     }
 
     @Override
     public Player player(Colour colour, ScotlandYardView view, String mapFilename) {
         switch (typeMap.get(colour)) {
             case AI:
-                return new MyAIPlayer(view, mapFilename);
+                return new MyAIPlayer(view, mapFilename,colours);
             case GUI:
                 return gui(view);
             default:
-                return new MyAIPlayer(view, mapFilename);
+                return new MyAIPlayer(view, mapFilename,colours);
         }
     }
 

@@ -11,172 +11,80 @@ import solution.*;
  * param of score - its implementaton is important!!!!! 
  */
 
-
-
 /*Current Issues
-* 1) Null pointer in nextPlayer(), line 145
+* 1) Currently manually entered first Mr X location as location not know until notify
+* 2) Game time outs after 'Interrupted Exception'. 
+* 3) Need to tidy up, add comments etc. 
 */
 
 class MyAIPlayer implements Player
 {
 
-	class AIModel extends ScotlandYardModel implements Spectator {
-	
-		List<Move> movesFromCurrent; 
-		int mrXLocation;
-
-		public AIModel(int numDetectives, List<Boolean> showRounds, 
-		String graphFilename, int mrXLocation, List<Move> movesFromCurrent) {
-			super(numDetectives, showRounds, graphFilename);
-			this.mrXLocation = mrXLocation;
-			this.movesFromCurrent = movesFromCurrent; 
-		}
-
-		public void notify(Move move) {
-			
-			if(move instanceof MoveTicket) {
-				MoveTicket moveTicket = (MoveTicket)move;
-				this.play(moveTicket);
-				if(move.colour.equals(Colour.Black)) {
-					mrXLocation = moveTicket.target;
-				}
-			} else if (move instanceof MoveDouble) {
-				MoveDouble moveDouble = (MoveDouble)move;
-				this.play(moveDouble);
-				if(move.colour.equals(Colour.Black)) {
-					mrXLocation = moveDouble.move2.target;
-				}
-			} else {
-				this.play((MovePass)move);
-			}
-			this.nextPlayer();
-		}
-
-		public void addMove(Move move) {
-			movesFromCurrent.add(move);
-		}
-	}
-
 	private Graph<Integer, Route> graph;
 	private ScotlandYardView initialView;
 	private AIModel currentGame;
-	private List<Move> movesPlayed;
 	private String graphFilename;
+	private Set<Colour> colours;
 
-    public MyAIPlayer(ScotlandYardView view, String graphFilename)
+    public MyAIPlayer(ScotlandYardView view, String graphFilename,Set<Colour> colours)
     {
     	System.out.println("MyAIPlayer Constructor");
     	initialView = view;
 	ScotlandYardGraphReader reader = new ScotlandYardGraphReader();
 	try { graph = reader.readGraph(graphFilename); } 
 	catch(Exception e) { System.err.println(e.getMessage()); }
-	movesPlayed = new ArrayList<Move>();
 	this.graphFilename = graphFilename;
+	this.colours = colours;
+	currentGame = new AIModel(view,graphFilename,new ArrayList<Move>(),colours);
 	
-	currentGame = createInitialModel(view,graphFilename);
-    }
-
-    private AIModel createInitialModel(ScotlandYardView model, String graphFilename) {
-	List<Colour> colours = model.getPlayers();
-   	int numDetectives = colours.size();
-   	AIModel newGame = new AIModel(numDetectives,model.getRounds(),graphFilename,0,
-   	new ArrayList<Move>());
-   	colours.add(Colour.Black);
-	Set<Ticket> ticketTypes = new HashSet<Ticket>();
-	ticketTypes.add(Ticket.Taxi);	
-	ticketTypes.add(Ticket.Bus);	
-	ticketTypes.add(Ticket.Underground);
-		
-	for(Colour colour : colours) {
-		Map<Ticket,Integer> tickets = new HashMap<Ticket,Integer>();
-		for(Ticket ticket : ticketTypes) {
-			tickets.put(ticket,model.getPlayerTickets(colour,ticket));
-		}
-		if(colour.equals(Colour.Black)) {
-			tickets.put(Ticket.Secret,model.getPlayerTickets(colour,Ticket.Secret));
-			tickets.put(Ticket.Double,model.getPlayerTickets(colour,Ticket.Double));
-		}
-		newGame.join(null,colour,model.getPlayerLocation(colour),tickets);
-	}
-	return newGame;
     }
 
     public Move notify(int location, Set<Move> moves) 
-    {
-    	Set<AIModel> games = createGames(currentGame,moves,1);
-    	Move bestMove = null;
-    	double highestScore = Double.NEGATIVE_INFINITY;
-    	for(AIModel game : games) {
-		double score = score(game,game.mrXLocation);
-		if(score > highestScore) {
-			highestScore = score;
-			int size = game.movesFromCurrent.size();
-			bestMove = game.movesFromCurrent.get(size-1);
-		}
-    	}
-    	return bestMove;
-    }
-
-    private AIModel createAIModel(AIModel previousState, Move move) {
-	AIModel newModel = createInitialModel(initialView,graphFilename);
-	newModel.addMove(move);
-	List<Move> newMoves = previousState.movesFromCurrent;
-	if(move instanceof MoveTicket) {
-		newMoves.add((MoveTicket) move);
-	} else if (move instanceof MoveDouble) {
-		MoveDouble doubleMove = (MoveDouble) move;
-		newMoves.add(doubleMove.move1);
-		newMoves.add(doubleMove.move2);
-	} 
-	return syncModel(newModel,newMoves);
-    }
-
-    private AIModel syncModel(AIModel model, List<Move> newMoves) {
-	for(Move move : movesPlayed) {
-		if(move instanceof MoveTicket) {
-			MoveTicket moveTicket = (MoveTicket) move;
-			model.play(moveTicket);
-		} else if (move instanceof MoveDouble) {
-			MoveDouble doubleMove = (MoveDouble) move;
-			model.play(doubleMove);
-		}
-		model.nextPlayer();
-	}
-	for(Move newMove : newMoves) {
-		model.addMove(newMove);
-		if(newMove instanceof MoveTicket) {
-			MoveTicket moveTicket = (MoveTicket) newMove;
-			model.play(moveTicket);
-		} else if (newMove instanceof MoveDouble) {
-			MoveDouble doubleMove = (MoveDouble) newMove;
-			model.play(doubleMove);
-		}
-		model.nextPlayer();
-	}
-	return model;
-    } 
-
-    private Set<AIModel> createGames(AIModel model, Set<Move> moves, int depth) {	
+    {    
 	Set<AIModel> leafGames = new HashSet<AIModel>();
 	Set<AIModel> nextGames = new HashSet<AIModel>();
+	List<Move> movesPlayed = new ArrayList<Move>(currentGame.getMovesPlayed());
 	int currentDepth = 0;
+	int depth = 1;
+	
 	for(Move move: moves) {
-		leafGames.add(createAIModel(model,move));
+		List<Move> possibleMovesPlayed = new ArrayList<Move>(movesPlayed);
+		possibleMovesPlayed.add(move);
+		leafGames.add(new AIModel(initialView,graphFilename,possibleMovesPlayed,colours));
 	}
 	currentDepth++;
 
 	while(currentDepth!=depth) {
 		for(AIModel game : leafGames) {
+			//here do we need to assume detectives play best possible move for part5?
 			for(Move move : game.validMoves(game.getCurrentPlayer())) {
-				nextGames.add(createAIModel(game,move));
+				List<Move> movesPlayedByGame = game.getMovesPlayed();
+				movesPlayedByGame.add(move);
+				AIModel newModel = new AIModel(initialView,graphFilename,
+				movesPlayedByGame,colours);
+				nextGames.add(newModel);
 			}
 		}
 		leafGames = nextGames;
 		nextGames.clear();
 		currentDepth++;
 	}
-	return leafGames;
-    }  
+	Set<AIModel> games = leafGames;
+    	Move bestMove = null;
+    	double highestScore = Double.NEGATIVE_INFINITY;
+    	
+    	for(AIModel game : games) {    		
+		double score = score(game,game.getMrXLocation());
+		System.out.println("Score: " + score);
+		if(score > highestScore) {
+			highestScore = score;
+			int size = game.getMovesPlayed().size();
+			bestMove = game.getMovesPlayed().get(size-1);
+		}
+    	}
+    	return bestMove;
+    }
+
 
     //A rough board scoring function - weights of relatve components still
     // to be sorted out NOTE: @param mrXMoves MUST only contains moveTickets - it should not contains
@@ -184,20 +92,14 @@ class MyAIPlayer implements Player
     //as 2 separate moveTickets
     public double score(AIModel model, int mrXLocation /*List<MoveTicket> mrXMoves*/)
     {
-    	System.out.println("Entered Score");
-    	//System.out.println("Location on line 130: " + mrXLocation);
-    	List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
-	//System.out.println("movesAwayFromDetectives calculated: " + movesAwayFromDetectives);
-    	int closesedDetective = Collections.min(movesAwayFromDetectives);
 
+    	List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
+    	int closesedDetective = Collections.min(movesAwayFromDetectives);
     	//Set<Integer> possibleLoctions = possibleLocations(model, mrXMoves);
     	double score = 0;
     	score += orderOfNode(mrXLocation);
-
     	score += adjacentNodeOrder(mrXLocation);
-
     	score -= distanceFromCenter(mrXLocation) / 100;
-
     	score += 2 * average(movesAwayFromDetectives);
     	score += model.getPlayerTickets(Colour.Black, Ticket.Secret);
     	score += model.getPlayerTickets(Colour.Black, Ticket.Double);
@@ -232,11 +134,8 @@ class MyAIPlayer implements Player
     // disregarding boat edges
     private List<Integer> movesAwayFromDetectives(int mrXLocation, ScotlandYardModel model)
     {
-    	//System.out.println("MrXLocation: " + mrXLocation);
     	Set<Integer> visited = new HashSet<Integer>();
-    	//System.out.println("movessAway function entered");
     	Set<Integer> detectiveLocations = detectiveLocations(model);
-    	System.out.println("detective locations calculated: " + detectiveLocations);
     	Set<Integer> locations = new HashSet<Integer>();
     	List<Integer> detectiveMovesAway = new ArrayList<Integer>();
     	locations.add(mrXLocation);
@@ -247,27 +146,20 @@ class MyAIPlayer implements Player
     		for(int location : locations)
     		{
     			if(detectiveLocations.contains(location)) detectiveMovesAway.add(i);
-    			//System.out.println("locations loop entered");
-    			//System.out.println("Location: " + location);
     			Set<Edge<Integer, Route>> edges = graph.getEdgesFrom(location);
-    			//System.out.println("edges set created: " + edges);
     			for(Edge<Integer, Route> edge : edges)
     			{
-    			//	System.out.println("edge loop entered");
     				if(visited.contains(edge.target()) || edge.data().equals(Route.Boat)) continue;
     				tempLocations.add(edge.target());
-    				//System.out.println("added to tempLocations");	
     			}
-    			//System.out.println("End of location loop");	
     		}
-    		//System.out.println("Line 160");
     		locations = tempLocations;
     	}
     	System.out.println(detectiveMovesAway);
     	return detectiveMovesAway;
     }
     
-  //returns the locations of all the detectives
+   //returns the locations of all the detectives
     private Set<Integer> detectiveLocations(ScotlandYardModel model)
     {
     	List<Colour> players = model.getPlayers();
