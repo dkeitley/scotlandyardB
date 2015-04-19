@@ -24,6 +24,7 @@ class MyAIPlayer implements Player, Spectator
 	private Graph<Integer, Route> graph;
 	private ScotlandYardView InitialView;
 	private AIModel currentGame;
+	private GameTreeNode rootNode;
 	private String graphFilename;
 	private boolean firstMove;
 
@@ -53,6 +54,7 @@ class MyAIPlayer implements Player, Spectator
 			System.err.println(e.getMessage());
 		}
 		currentGame = new AIModel(InitialView, graphFilename, mrXLocation);
+		rootNode = new GameTreeNode(currentGame);
 		firstMove = false;
 	}
 
@@ -60,27 +62,119 @@ class MyAIPlayer implements Player, Spectator
 	public Move notify(int location, Set<Move> moves)
 	{	
 		if(firstMove) firstMove(location);
-		
-		double highestScore = Integer.MIN_VALUE;
-		Move bestMove = null;
-		
-		for(Move move : moves)
-		{
-			AIModel model = currentGame.copy();
-			model.turn(move);
-			double score = score(model, location);
-			if(score > highestScore) bestMove = move;
+
+		/* while there is time to explore a layer deeper within 15s limit,
+		   create a GameTreeNode for every valid move. i.e. create GameTree.
+		   Set the scores of the leaf nodes and then call function to set 
+		   scores of all other nodes. */
+
+		 //TODO 1) write isTimeUp() function  
+		while(isTimeUp()!=false) {
+			for(GameTreeNode node : currentLayer) {
+				Colour currentPlayer = node.model.getCurrentPlayer();
+				for(Move move : node.model.validMoves(currentPlayer)) {
+					newModel = node.model.copy();
+					newModel.turn(move);
+					GameTreeNode newNode = new GameTreeNode(newModel);
+					newNode.setMove(move);
+					newNode.setParentNode(node);
+					node.addLeafNode(newNode);
+					nextLayer.add(newNode)
+				}
+			}
+			cuurentLayer = nextLayer;
 		}
+		
+		for(GameTreeNode node : currentLayer) {
+			double score = score(node.model);
+			node.setScore(score); 
+		}
+
+		double rootScore = setScores(rootNode,Colour.Black);
+		double maxScore = NEGATIVE_INFINITY;
+		Move bestMove = null;
+		for(GameTreeNode node : root.getLeafNodes()) {
+			double currentScore = node.getScore();
+			if(currentScore > maxScore) {
+				maxScore = currentScore;
+				bestMove = node.move;
+			}
+		}
+
+		return bestMove;		
+		
+		/*double highestScore = Double.NEGATIVE_INFINITY;
+		Move bestMove = null;
+		for(
+			for(Move move : moves)
+			{
+				AIModel model = currentGame.copy();
+				model.turn(move);
+				//change location to target of move
+				double score = score(model, location);
+				if(score > highestScore) bestMove = move;
+			}
 		System.out.println("Mx X move ->" + bestMove.toString());
 		return bestMove;
+		*/
     }
 
+
+    public Move setScores(GameTreeNode root, Colour currentPlayer) {
+    		/* if layer beneath contains actual scores (i.e. has no leaf nodes),
+		   set score above to min/max depending on isBlackTurn.
+		   Else setScore of every leafNode
+		*/
+		Set<Double> scores = new HashSet<Double>();
+		Set<GameTreeNode> leafNodes = root.getLeafNodes();
+		
+		Iterator iterator = leafNodes.iterator();
+		GameTreeNode sampleNode = (GameTreeNode) iterator.next();
+		
+		double maxScore = Double.POSITIVE_INFINITY;
+		double minScore = Double.NEGATIVE_INFINITY;
+		
+		if(sampleNode.getLeafNodes() == null) {
+			for(GameTreeNode node : leafNodes) {
+				double score = node.getScore();
+				if(score > maxScore) {
+					maxScore = score;
+				}
+				if(score < minScore) {
+					minScore = score;
+				}
+			}
+			
+			if(currentPlayer.equals(Colour.Black)) {
+				double maxScore = Collections.max(scores);
+				root.setScore(maxScore);
+				return maxScore;
+			} else {
+				double minScore = Collections.min(scores);
+				root.setScore(minScore);
+				return minScore;
+			}
+		} else {
+			for(GameTreeNode node : leafNodes) {
+				scores.add(setScores(node,node.model.getCurrentPlayer())):
+			}
+			if(currentPlayer.equals(Colour.Black)) {
+				double maxScore = Collections.max(scores);
+				root.setScore(maxScore);
+				return maxScore;
+			} else {
+				double minScore = Collections.min(scores);
+				root.setScore(minScore);
+				return minScore;
+			}
+		}
 		
 
 	// A rough board scoring function - weights of relatve components still
 	// to be sorted out
-	public double score(AIModel model, int mrXLocation)
+	public double score(AIModel model)
 	{
+		int mrXLocation = model.getMrXLocation();
 		List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
 		int closesedDetective = Collections.min(movesAwayFromDetectives);
 		Set<Integer> possibleLoctions = possibleLocations(model);
