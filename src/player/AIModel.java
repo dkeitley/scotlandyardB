@@ -70,6 +70,7 @@ class AIModel extends ScotlandYardModel
 	@Override
 	public void play(MoveTicket moveTicket)
 	{
+		if(moveTicket.colour.equals(Colour.Black) && moveTicket.target == getPlayerLocation(Colour.Black)) return;
 		super.play(moveTicket);
 		movesPlayed.add(moveTicket);
 		if(moveTicket.colour.equals(Colour.Black))
@@ -107,6 +108,7 @@ class AIModel extends ScotlandYardModel
 	//like turn but deals with double move notifying 
 	public void notify (Move move)
 	{
+		System.out.println("Entered notify");
 		if(move instanceof MoveDouble || tempMoves.size() == 1 ) tempMoves.add(move);
 		else if (tempMoves.size() == 2) 
 		{

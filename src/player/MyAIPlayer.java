@@ -27,18 +27,25 @@ class MyAIPlayer implements Player, Spectator
 	private GameTreeNode rootNode;
 	private String graphFilename;
 	private boolean firstMove;
+	private boolean alreadyNotified;
 
 	public MyAIPlayer(ScotlandYardView view, String graphFilename)
 	{
 		this.InitialView = view;
 		this.graphFilename = graphFilename;
 		firstMove = true;
+		alreadyNotified = false;
 	}
 	
 	//notifies the model that someone has made a move
 	public void notify(Move move)
 	{
-		currentGame.notify(move);
+		if(alreadyNotified == true) {
+			alreadyNotified = false;
+			return;
+		} else {
+			rootNode.model.notify(move);
+		}
 	}
 	
 	//function to set up model on first move
@@ -62,23 +69,25 @@ class MyAIPlayer implements Player, Spectator
 	public Move notify(int location, Set<Move> moves)
 	{	
 		if(firstMove) firstMove(location);
-
-		/* while there is time to explore a layer deeper within 15s limit,
-		   create a GameTreeNode for every valid move. i.e. create GameTree.
-		   Set the scores of the leaf nodes and then call function to set 
-		   scores of all other nodes. */
-
-		 //TODO 1) write isTimeUp() function  
-		//initialise currentLayer
+		System.out.println("Black location: " + rootNode.model.getMrXLocation());
 		
 		double bestScore = alphaBeta(rootNode,0,2);
-		System.out.println("Best score : " + bestScore);
 		Move bestMove = null;
 		for(GameTreeNode node : rootNode.getLeafNodes()) {
+			System.out.println("Score: " + node.getValue());
 			if(node.getValue() == bestScore) {
 				bestMove = node.getMove();
 			}
 		}
+
+		rootNode.setMove(null);
+		rootNode.setValue(0);
+		rootNode.setAlpha(Double.NEGATIVE_INFINITY);
+		rootNode.setBeta(Double.POSITIVE_INFINITY);
+		rootNode.setLeafNodes(new HashSet<GameTreeNode>());
+		System.out.println("Move to be played: " + bestMove + " " + bestScore);
+		rootNode.model.notify(bestMove);
+		alreadyNotified = true;
 		return bestMove;		
     }
 
@@ -91,11 +100,11 @@ class MyAIPlayer implements Player, Spectator
 	if(depth == maxDepth) {
 		node.setScore(score(node.model));
 		node.setValue(node.getScore());
-		System.out.println("Score found: " + node.getScore());
 		return node.getScore();
 	} 
 
 	Set<Move> validMoves = node.model.validMoves(node.model.getCurrentPlayer());
+	//if(node.model.getCurrentPlayer().equals(Colour.Black)) System.out.println("ValidMoves: " + validMoves);
 	Iterator iterator = validMoves.iterator();
 	
 	if(node.isMaximizer() == true) {
@@ -103,32 +112,34 @@ class MyAIPlayer implements Player, Spectator
 		node.setValue(Double.NEGATIVE_INFINITY);
 		
 		for(int i = 1; i <= validMoves.size();i++) {
-		
 			AIModel newModel = node.model.copy();
 			Move move = (Move) iterator.next();
-			System.out.println(move + " " + depth);
 			newModel.turn(move);
 			GameTreeNode leafNode = new GameTreeNode(newModel);
 			leafNode.setMove(move);
+			//System.out.println(node);
+			node.addLeafNode(leafNode);
 			
 			node.setValue(Math.max(alphaBeta(leafNode,depth+1,maxDepth),node.getValue()));
 			node.setAlpha(Math.max(node.getAlpha(), node.getValue()));
 			
 			if(node.getBeta() <= node.getAlpha()) {
+				System.out.println("Branch pruned");
 				break;
 			}
-		return node.getValue();
 		}
+		return node.getValue();
+		
 	} else {
 		node.setValue(Double.POSITIVE_INFINITY);
 		for(int j = 1; j <= validMoves.size();j++) {
 		
 			AIModel newModel = node.model.copy();
 			Move move = (Move) iterator.next();
-			System.out.println(move + " " + depth);
 			newModel.turn(move);
 			GameTreeNode leafNode = new GameTreeNode(newModel);
 			leafNode.setMove(move);
+			node.addLeafNode(leafNode);
 			
 			node.setValue(Math.min(alphaBeta(leafNode,depth+1,maxDepth),node.getValue()));
 			node.setBeta(Math.min(node.getBeta(),node.getValue()));
@@ -139,21 +150,7 @@ class MyAIPlayer implements Player, Spectator
 		}
 		return node.getValue();
 	}	
-	return 0;
     }
-
-
-
-
-
-
-
-
-
-
-    
-
-
 
 	// A rough board scoring function - weights of relatve components still
 	// to be sorted out
@@ -353,3 +350,4 @@ class MyAIPlayer implements Player, Spectator
 		return Math.sqrt(xDistance * xDistance + yDistance * yDistance);
 	}
 }
+
