@@ -69,106 +69,91 @@ class MyAIPlayer implements Player, Spectator
 		   scores of all other nodes. */
 
 		 //TODO 1) write isTimeUp() function  
-		while(isTimeUp()!=false) {
-			for(GameTreeNode node : currentLayer) {
-				Colour currentPlayer = node.model.getCurrentPlayer();
-				for(Move move : node.model.validMoves(currentPlayer)) {
-					newModel = node.model.copy();
-					newModel.turn(move);
-					GameTreeNode newNode = new GameTreeNode(newModel);
-					newNode.setMove(move);
-					newNode.setParentNode(node);
-					node.addLeafNode(newNode);
-					nextLayer.add(newNode)
-				}
-			}
-			cuurentLayer = nextLayer;
-		}
+		//initialise currentLayer
 		
-		for(GameTreeNode node : currentLayer) {
-			double score = score(node.model);
-			node.setScore(score); 
-		}
-
-		double rootScore = setScores(rootNode,Colour.Black);
-		double maxScore = NEGATIVE_INFINITY;
+		double bestScore = alphaBeta(rootNode,0,2);
+		System.out.println("Best score : " + bestScore);
 		Move bestMove = null;
-		for(GameTreeNode node : root.getLeafNodes()) {
-			double currentScore = node.getScore();
-			if(currentScore > maxScore) {
-				maxScore = currentScore;
-				bestMove = node.move;
+		for(GameTreeNode node : rootNode.getLeafNodes()) {
+			if(node.getValue() == bestScore) {
+				bestMove = node.getMove();
 			}
 		}
-
 		return bestMove;		
+    }
+
+   
+
+    /*TODO change function so that GameTreeNodes aren't created unless the leaf node is worth
+    exlporing*/
+    private double alphaBeta(GameTreeNode node, int depth, int maxDepth) {
+	
+	if(depth == maxDepth) {
+		node.setScore(score(node.model));
+		node.setValue(node.getScore());
+		System.out.println("Score found: " + node.getScore());
+		return node.getScore();
+	} 
+
+	Set<Move> validMoves = node.model.validMoves(node.model.getCurrentPlayer());
+	Iterator iterator = validMoves.iterator();
+	
+	if(node.isMaximizer() == true) {
+	
+		node.setValue(Double.NEGATIVE_INFINITY);
 		
-		/*double highestScore = Double.NEGATIVE_INFINITY;
-		Move bestMove = null;
-		for(
-			for(Move move : moves)
-			{
-				AIModel model = currentGame.copy();
-				model.turn(move);
-				//change location to target of move
-				double score = score(model, location);
-				if(score > highestScore) bestMove = move;
+		for(int i = 1; i <= validMoves.size();i++) {
+		
+			AIModel newModel = node.model.copy();
+			Move move = (Move) iterator.next();
+			System.out.println(move + " " + depth);
+			newModel.turn(move);
+			GameTreeNode leafNode = new GameTreeNode(newModel);
+			leafNode.setMove(move);
+			
+			node.setValue(Math.max(alphaBeta(leafNode,depth+1,maxDepth),node.getValue()));
+			node.setAlpha(Math.max(node.getAlpha(), node.getValue()));
+			
+			if(node.getBeta() <= node.getAlpha()) {
+				break;
 			}
-		System.out.println("Mx X move ->" + bestMove.toString());
-		return bestMove;
-		*/
+		return node.getValue();
+		}
+	} else {
+		node.setValue(Double.POSITIVE_INFINITY);
+		for(int j = 1; j <= validMoves.size();j++) {
+		
+			AIModel newModel = node.model.copy();
+			Move move = (Move) iterator.next();
+			System.out.println(move + " " + depth);
+			newModel.turn(move);
+			GameTreeNode leafNode = new GameTreeNode(newModel);
+			leafNode.setMove(move);
+			
+			node.setValue(Math.min(alphaBeta(leafNode,depth+1,maxDepth),node.getValue()));
+			node.setBeta(Math.min(node.getBeta(),node.getValue()));
+			
+			if(node.getBeta() <= node.getAlpha()) {
+				break;
+			}
+		}
+		return node.getValue();
+	}	
+	return 0;
     }
 
 
-    public Move setScores(GameTreeNode root, Colour currentPlayer) {
-    		/* if layer beneath contains actual scores (i.e. has no leaf nodes),
-		   set score above to min/max depending on isBlackTurn.
-		   Else setScore of every leafNode
-		*/
-		Set<Double> scores = new HashSet<Double>();
-		Set<GameTreeNode> leafNodes = root.getLeafNodes();
-		
-		Iterator iterator = leafNodes.iterator();
-		GameTreeNode sampleNode = (GameTreeNode) iterator.next();
-		
-		double maxScore = Double.POSITIVE_INFINITY;
-		double minScore = Double.NEGATIVE_INFINITY;
-		
-		if(sampleNode.getLeafNodes() == null) {
-			for(GameTreeNode node : leafNodes) {
-				double score = node.getScore();
-				if(score > maxScore) {
-					maxScore = score;
-				}
-				if(score < minScore) {
-					minScore = score;
-				}
-			}
-			
-			if(currentPlayer.equals(Colour.Black)) {
-				double maxScore = Collections.max(scores);
-				root.setScore(maxScore);
-				return maxScore;
-			} else {
-				double minScore = Collections.min(scores);
-				root.setScore(minScore);
-				return minScore;
-			}
-		} else {
-			for(GameTreeNode node : leafNodes) {
-				scores.add(setScores(node,node.model.getCurrentPlayer())):
-			}
-			if(currentPlayer.equals(Colour.Black)) {
-				double maxScore = Collections.max(scores);
-				root.setScore(maxScore);
-				return maxScore;
-			} else {
-				double minScore = Collections.min(scores);
-				root.setScore(minScore);
-				return minScore;
-			}
-		}
-		
+
+
+
+
+
+
+
+
+    
+
+
 
 	// A rough board scoring function - weights of relatve components still
 	// to be sorted out
