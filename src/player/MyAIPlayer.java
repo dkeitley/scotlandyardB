@@ -46,6 +46,7 @@ class MyAIPlayer implements Player, Spectator
 		} else {
 			rootNode.model.notify(move);
 		}
+		//System.out.println("MrXLocation: " + rootNode.model.getMrXLocation());
 	}
 	
 	//function to set up model on first move
@@ -65,13 +66,13 @@ class MyAIPlayer implements Player, Spectator
 		firstMove = false;
 	}
 
-	//selects best move - curretly one move look ahead
+	//Selects best move based on the best score returned from minimax algorithm
 	public Move notify(int location, Set<Move> moves)
 	{	
 		if(firstMove) firstMove(location);
-		System.out.println("Black location: " + rootNode.model.getMrXLocation());
-		
-		double bestScore = alphaBeta(rootNode,0,2);
+
+		long startTime = System.currentTimeMillis();
+		double bestScore = alphaBeta(rootNode,startTime);
 		Move bestMove = null;
 		for(GameTreeNode node : rootNode.getLeafNodes()) {
 			System.out.println("Score: " + node.getValue());
@@ -85,26 +86,27 @@ class MyAIPlayer implements Player, Spectator
 		rootNode.setAlpha(Double.NEGATIVE_INFINITY);
 		rootNode.setBeta(Double.POSITIVE_INFINITY);
 		rootNode.setLeafNodes(new HashSet<GameTreeNode>());
+		
 		System.out.println("Move to be played: " + bestMove + " " + bestScore);
+		
 		rootNode.model.notify(bestMove);
 		alreadyNotified = true;
+		
 		return bestMove;		
     }
 
-   
-
-    /*TODO change function so that GameTreeNodes aren't created unless the leaf node is worth
-    exlporing*/
-    private double alphaBeta(GameTreeNode node, int depth, int maxDepth) {
-	
-	if(depth == maxDepth) {
+    //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
+    private double alphaBeta(GameTreeNode node, long startTime) {
+    
+	long time = System.currentTimeMillis();
+	System.out.println(time-startTime);
+	if(time - startTime >= 1500) {
 		node.setScore(score(node.model));
 		node.setValue(node.getScore());
 		return node.getScore();
 	} 
 
 	Set<Move> validMoves = node.model.validMoves(node.model.getCurrentPlayer());
-	//if(node.model.getCurrentPlayer().equals(Colour.Black)) System.out.println("ValidMoves: " + validMoves);
 	Iterator iterator = validMoves.iterator();
 	
 	if(node.isMaximizer() == true) {
@@ -115,12 +117,12 @@ class MyAIPlayer implements Player, Spectator
 			AIModel newModel = node.model.copy();
 			Move move = (Move) iterator.next();
 			newModel.turn(move);
+			
 			GameTreeNode leafNode = new GameTreeNode(newModel);
 			leafNode.setMove(move);
-			//System.out.println(node);
 			node.addLeafNode(leafNode);
 			
-			node.setValue(Math.max(alphaBeta(leafNode,depth+1,maxDepth),node.getValue()));
+			node.setValue(Math.max(alphaBeta(leafNode,startTime),node.getValue()));
 			node.setAlpha(Math.max(node.getAlpha(), node.getValue()));
 			
 			if(node.getBeta() <= node.getAlpha()) {
@@ -132,19 +134,22 @@ class MyAIPlayer implements Player, Spectator
 		
 	} else {
 		node.setValue(Double.POSITIVE_INFINITY);
+		
 		for(int j = 1; j <= validMoves.size();j++) {
 		
 			AIModel newModel = node.model.copy();
 			Move move = (Move) iterator.next();
 			newModel.turn(move);
+			
 			GameTreeNode leafNode = new GameTreeNode(newModel);
 			leafNode.setMove(move);
 			node.addLeafNode(leafNode);
 			
-			node.setValue(Math.min(alphaBeta(leafNode,depth+1,maxDepth),node.getValue()));
+			node.setValue(Math.min(alphaBeta(leafNode,startTime),node.getValue()));
 			node.setBeta(Math.min(node.getBeta(),node.getValue()));
 			
 			if(node.getBeta() <= node.getAlpha()) {
+				System.out.println("Branch pruned");
 				break;
 			}
 		}
