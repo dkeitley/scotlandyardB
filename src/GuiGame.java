@@ -1,5 +1,6 @@
 import net.PlayerFactory;
 import player.RandomPlayerFactory;
+import player.AIPlayerFactory;
 import scotlandyard.Colour;
 import scotlandyard.ScotlandYard;
 import scotlandyard.Spectator;
@@ -34,13 +35,13 @@ public class GuiGame {
         String positionsFilename = "resources/pos.txt";
         String imageFilename     = "resources/map.jpg";
 
-        Map<Colour, RandomPlayerFactory.PlayerType> typeMap = new HashMap<Colour, RandomPlayerFactory.PlayerType>();
-        typeMap.put(Colour.Black,  RandomPlayerFactory.PlayerType.AI);
-        typeMap.put(Colour.Blue,   RandomPlayerFactory.PlayerType.AI);
-        typeMap.put(Colour.Green,  RandomPlayerFactory.PlayerType.GUI);
-        typeMap.put(Colour.Red,    RandomPlayerFactory.PlayerType.AI);
-        typeMap.put(Colour.White,  RandomPlayerFactory.PlayerType.GUI);
-        typeMap.put(Colour.Yellow, RandomPlayerFactory.PlayerType.AI);
+        Map<Colour, AIPlayerFactory.PlayerType> typeMap = new HashMap<Colour, AIPlayerFactory.PlayerType>();
+        typeMap.put(Colour.Black,  AIPlayerFactory.PlayerType.AI);
+        typeMap.put(Colour.Blue,   AIPlayerFactory.PlayerType.GUI);
+        typeMap.put(Colour.Green,  AIPlayerFactory.PlayerType.GUI);
+        typeMap.put(Colour.Red,    AIPlayerFactory.PlayerType.GUI);
+        typeMap.put(Colour.White,  AIPlayerFactory.PlayerType.GUI);
+        typeMap.put(Colour.Yellow, AIPlayerFactory.PlayerType.GUI);
 
 
         Map<Ticket, Integer> mrXTickets = new HashMap<Ticket, Integer>();
@@ -57,9 +58,9 @@ public class GuiGame {
         detectiveXTickets.put(Ticket.Taxi,        11);
 
 
-        PlayerFactory factory = new RandomPlayerFactory(typeMap, imageFilename, positionsFilename);
+        PlayerFactory factory = new AIPlayerFactory(typeMap, imageFilename, positionsFilename);
         ScotlandYard game = new ScotlandYardModel(5, rounds, graphFilename);
-        game.join(factory.player(Colour.Black,  game, graphFilename), Colour.Black, 194, mrXTickets);
+        game.join(factory.player(Colour.Black,  game, graphFilename), Colour.Black, 186, mrXTickets);
         game.join(factory.player(Colour.Blue,   game, graphFilename), Colour.Blue, 155, new HashMap<Ticket, Integer>(detectiveXTickets));
         game.join(factory.player(Colour.Green,  game, graphFilename), Colour.Green, 15, new HashMap<Ticket, Integer>(detectiveXTickets));
         game.join(factory.player(Colour.Red,    game, graphFilename), Colour.Red, 6, new HashMap<Ticket, Integer>(detectiveXTickets));
