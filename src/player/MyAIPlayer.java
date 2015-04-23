@@ -27,18 +27,26 @@ class MyAIPlayer implements Player, Spectator
 	private GameTreeNode rootNode;
 	private String graphFilename;
 	private boolean firstMove;
+	private boolean alreadyNotified;
 
 	public MyAIPlayer(ScotlandYardView view, String graphFilename)
 	{
 		this.InitialView = view;
 		this.graphFilename = graphFilename;
 		firstMove = true;
+		alreadyNotified = false;
 	}
 	
 	//notifies the model that someone has made a move
 	public void notify(Move move)
 	{
-		currentGame.notify(move);
+		if(alreadyNotified == true) {
+			alreadyNotified = false;
+			return;
+		} else {
+			rootNode.model.notify(move);
+		}
+		//System.out.println("MrXLocation: " + rootNode.model.getMrXLocation());
 	}
 	
 	//function to set up model on first move
@@ -58,117 +66,96 @@ class MyAIPlayer implements Player, Spectator
 		firstMove = false;
 	}
 
-	//selects best move - curretly one move look ahead
+	//Selects best move based on the best score returned from minimax algorithm
 	public Move notify(int location, Set<Move> moves)
 	{	
 		if(firstMove) firstMove(location);
 
-		/* while there is time to explore a layer deeper within 15s limit,
-		   create a GameTreeNode for every valid move. i.e. create GameTree.
-		   Set the scores of the leaf nodes and then call function to set 
-		   scores of all other nodes. */
-
-		 //TODO 1) write isTimeUp() function  
-		while(isTimeUp()!=false) {
-			for(GameTreeNode node : currentLayer) {
-				Colour currentPlayer = node.model.getCurrentPlayer();
-				for(Move move : node.model.validMoves(currentPlayer)) {
-					newModel = node.model.copy();
-					newModel.turn(move);
-					GameTreeNode newNode = new GameTreeNode(newModel);
-					newNode.setMove(move);
-					newNode.setParentNode(node);
-					node.addLeafNode(newNode);
-					nextLayer.add(newNode)
-				}
-			}
-			cuurentLayer = nextLayer;
-		}
-		
-		for(GameTreeNode node : currentLayer) {
-			double score = score(node.model);
-			node.setScore(score); 
-		}
-
-		double rootScore = setScores(rootNode,Colour.Black);
-		double maxScore = NEGATIVE_INFINITY;
+		long startTime = System.currentTimeMillis();
+		double bestScore = alphaBeta(rootNode,startTime);
 		Move bestMove = null;
-		for(GameTreeNode node : root.getLeafNodes()) {
-			double currentScore = node.getScore();
-			if(currentScore > maxScore) {
-				maxScore = currentScore;
-				bestMove = node.move;
+		for(GameTreeNode node : rootNode.getLeafNodes()) {
+			System.out.println("Score: " + node.getValue());
+			if(node.getValue() == bestScore) {
+				bestMove = node.getMove();
 			}
 		}
 
+		rootNode.setMove(null);
+		rootNode.setValue(0);
+		rootNode.setAlpha(Double.NEGATIVE_INFINITY);
+		rootNode.setBeta(Double.POSITIVE_INFINITY);
+		rootNode.setLeafNodes(new HashSet<GameTreeNode>());
+		
+		System.out.println("Move to be played: " + bestMove + " " + bestScore);
+		
+		rootNode.model.notify(bestMove);
+		alreadyNotified = true;
+		
 		return bestMove;		
-		
-		/*double highestScore = Double.NEGATIVE_INFINITY;
-		Move bestMove = null;
-		for(
-			for(Move move : moves)
-			{
-				AIModel model = currentGame.copy();
-				model.turn(move);
-				//change location to target of move
-				double score = score(model, location);
-				if(score > highestScore) bestMove = move;
-			}
-		System.out.println("Mx X move ->" + bestMove.toString());
-		return bestMove;
-		*/
     }
 
+    //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
+    private double alphaBeta(GameTreeNode node, long startTime) {
+    
+	long time = System.currentTimeMillis();
+	System.out.println(time-startTime);
+	if(time - startTime >= 1500) {
+		node.setScore(score(node.model));
+		node.setValue(node.getScore());
+		return node.getScore();
+	} 
 
-    public Move setScores(GameTreeNode root, Colour currentPlayer) {
-    		/* if layer beneath contains actual scores (i.e. has no leaf nodes),
-		   set score above to min/max depending on isBlackTurn.
-		   Else setScore of every leafNode
-		*/
-		Set<Double> scores = new HashSet<Double>();
-		Set<GameTreeNode> leafNodes = root.getLeafNodes();
+	Set<Move> validMoves = node.model.validMoves(node.model.getCurrentPlayer());
+	Iterator iterator = validMoves.iterator();
+	
+	if(node.isMaximizer() == true) {
+	
+		node.setValue(Double.NEGATIVE_INFINITY);
 		
-		Iterator iterator = leafNodes.iterator();
-		GameTreeNode sampleNode = (GameTreeNode) iterator.next();
-		
-		double maxScore = Double.POSITIVE_INFINITY;
-		double minScore = Double.NEGATIVE_INFINITY;
-		
-		if(sampleNode.getLeafNodes() == null) {
-			for(GameTreeNode node : leafNodes) {
-				double score = node.getScore();
-				if(score > maxScore) {
-					maxScore = score;
-				}
-				if(score < minScore) {
-					minScore = score;
-				}
-			}
+		for(int i = 1; i <= validMoves.size();i++) {
+			AIModel newModel = node.model.copy();
+			Move move = (Move) iterator.next();
+			newModel.turn(move);
 			
-			if(currentPlayer.equals(Colour.Black)) {
-				double maxScore = Collections.max(scores);
-				root.setScore(maxScore);
-				return maxScore;
-			} else {
-				double minScore = Collections.min(scores);
-				root.setScore(minScore);
-				return minScore;
-			}
-		} else {
-			for(GameTreeNode node : leafNodes) {
-				scores.add(setScores(node,node.model.getCurrentPlayer())):
-			}
-			if(currentPlayer.equals(Colour.Black)) {
-				double maxScore = Collections.max(scores);
-				root.setScore(maxScore);
-				return maxScore;
-			} else {
-				double minScore = Collections.min(scores);
-				root.setScore(minScore);
-				return minScore;
+			GameTreeNode leafNode = new GameTreeNode(newModel);
+			leafNode.setMove(move);
+			node.addLeafNode(leafNode);
+			
+			node.setValue(Math.max(alphaBeta(leafNode,startTime),node.getValue()));
+			node.setAlpha(Math.max(node.getAlpha(), node.getValue()));
+			
+			if(node.getBeta() <= node.getAlpha()) {
+				System.out.println("Branch pruned");
+				break;
 			}
 		}
+		return node.getValue();
 		
+	} else {
+		node.setValue(Double.POSITIVE_INFINITY);
+		
+		for(int j = 1; j <= validMoves.size();j++) {
+		
+			AIModel newModel = node.model.copy();
+			Move move = (Move) iterator.next();
+			newModel.turn(move);
+			
+			GameTreeNode leafNode = new GameTreeNode(newModel);
+			leafNode.setMove(move);
+			node.addLeafNode(leafNode);
+			
+			node.setValue(Math.min(alphaBeta(leafNode,startTime),node.getValue()));
+			node.setBeta(Math.min(node.getBeta(),node.getValue()));
+			
+			if(node.getBeta() <= node.getAlpha()) {
+				System.out.println("Branch pruned");
+				break;
+			}
+		}
+		return node.getValue();
+	}	
+    }
 
 	// A rough board scoring function - weights of relatve components still
 	// to be sorted out
@@ -368,3 +355,4 @@ class MyAIPlayer implements Player, Spectator
 		return Math.sqrt(xDistance * xDistance + yDistance * yDistance);
 	}
 }
+

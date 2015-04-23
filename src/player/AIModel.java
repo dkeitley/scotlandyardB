@@ -70,6 +70,7 @@ class AIModel extends ScotlandYardModel
 	@Override
 	public void play(MoveTicket moveTicket)
 	{
+		if(moveTicket.colour.equals(Colour.Black) && moveTicket.target == getPlayerLocation(Colour.Black)) return;
 		super.play(moveTicket);
 		movesPlayed.add(moveTicket);
 		if(moveTicket.colour.equals(Colour.Black))
@@ -83,10 +84,15 @@ class AIModel extends ScotlandYardModel
 	@Override
 	public void play(MoveDouble moveDouble)
 	{
+		//Michael could you explain the movesPlayed removed? 
 		super.play(moveDouble);
 		movesPlayed.remove(movesPlayed.size() - 1);
 		movesPlayed.remove(movesPlayed.size() - 1);
 		movesPlayed.add(moveDouble);
+		Move move2 = (Move) moveDouble.move2;
+		mrXLocation = ((MoveTicket)move2).target;
+		mrXMoves.add((MoveTicket)moveDouble.move1);
+		mrXMoves.add((MoveTicket)move2);
 	}
 	
 	//plays a movePass keeping track of moves that have been played
@@ -107,15 +113,18 @@ class AIModel extends ScotlandYardModel
 	//like turn but deals with double move notifying 
 	public void notify (Move move)
 	{
-		if(move instanceof MoveDouble || tempMoves.size() == 1 ) tempMoves.add(move);
-		else if (tempMoves.size() == 2) 
-		{
-			MoveTicket move1 = (MoveTicket) tempMoves.get(1);
-			MoveTicket move2 = (MoveTicket) move;
-			turn(MoveDouble.instance(Colour.Black, move1, move2));
+		System.out.println("Entered notify: " + move);
+		if(move instanceof MoveDouble) {
+			tempMoves.add(move);
+			turn(move);
+			
+		} else if (tempMoves.size() == 1) {
+			tempMoves.add(move);
+		} else if (tempMoves.size() == 2) {
 			tempMoves.clear();
+		} else {
+			turn(move);
 		}
-		else turn(move);
 	}
 
 	public List<Move> getMovesPlayed()

@@ -72,11 +72,15 @@ public class AIPlayerFactory implements PlayerFactory
 		switch (typeMap.get(colour))
 		{
 		case AI:
-			return new MyAIPlayer(view, mapFilename);
+			MyAIPlayer newPlayer = new MyAIPlayer(view, mapFilename);
+			spectators.add(newPlayer);
+			return newPlayer;
 		case GUI:
 			return gui(view);
 		default:
-			return new MyAIPlayer(view, mapFilename);
+			MyAIPlayer newPlayer2 = new MyAIPlayer(view, mapFilename);
+			spectators.add(newPlayer2);
+			return newPlayer2;
 		}
 	}
 
@@ -90,9 +94,7 @@ public class AIPlayerFactory implements PlayerFactory
 	@Override
 	public List<Spectator> getSpectators(ScotlandYardView view)
 	{
-		List<Spectator> specs = new ArrayList<Spectator>();
-		specs.add(gui(view));
-		return specs;
+		return spectators;
 	}
 
 	@Override
@@ -117,3 +119,4 @@ public class AIPlayerFactory implements PlayerFactory
 		return gui;
 	}
 }
+
