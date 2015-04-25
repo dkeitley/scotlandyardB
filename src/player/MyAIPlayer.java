@@ -62,7 +62,7 @@ class MyAIPlayer implements Player, Spectator
 			System.err.println(e.getMessage());
 		}
 		currentGame = new AIModel(InitialView, graphFilename, mrXLocation);
-		rootNode = new GameTreeNode(currentGame);
+		rootNode = new GameTreeNode(currentGame,null);
 		firstMove = false;
 	}
 
@@ -71,90 +71,89 @@ class MyAIPlayer implements Player, Spectator
 	{	
 		if(firstMove) firstMove(location);
 
-		long startTime = System.currentTimeMillis();
-		double bestScore = alphaBeta(rootNode,startTime);
-		Move bestMove = null;
-		for(GameTreeNode node : rootNode.getLeafNodes()) {
-			System.out.println("Score: " + node.getValue());
-			if(node.getValue() == bestScore) {
-				bestMove = node.getMove();
-			}
-		}
-
-		rootNode.setMove(null);
-		rootNode.setValue(0);
-		rootNode.setAlpha(Double.NEGATIVE_INFINITY);
-		rootNode.setBeta(Double.POSITIVE_INFINITY);
-		rootNode.setLeafNodes(new HashSet<GameTreeNode>());
-		
+		//long startTime = System.currentTimeMillis();
+		double bestScore = alphaBeta(rootNode,Double.NEGATIVE_INFINITY,Double.POSITIVE_INFINITY,0,2);
+		Move bestMove = findBestMove(bestScore);
 		System.out.println("Move to be played: " + bestMove + " " + bestScore);
 		
+		rootNode.clearChildren();
 		rootNode.model.notify(bestMove);
 		alreadyNotified = true;
 		
 		return bestMove;		
     }
 
+    //finds the move to play based on the scores of each GameTreeNode 
+    private Move findBestMove(double bestScore) {
+    	Move bestMove = null;
+	for(GameTreeNode node : rootNode.getChildren()) {
+		if(node.getValue() == bestScore) {
+			bestMove = node.getMove();
+		}
+	}
+	return bestMove;
+    }
+
+    //test function: prints the sequence of moves to get to the current node in game tree	
+    private void printTree(double score, GameTreeNode node) {
+	System.out.println("-------------------------------------");
+
+	List<GameTreeNode> route = new ArrayList<GameTreeNode>();
+	route.add(node);
+	
+	while(node.getParent()!=null) {
+		route.add(node.getParent());
+		node = node.getParent();
+	}
+
+	System.out.println(route.get(route.size()-2).getMove());
+	for(int i = route.size()-3; i>=0; i--) {
+		GameTreeNode pathNode = route.get(i);
+		if(!pathNode.getMove().equals(null)) {
+			System.out.println("          |");
+			System.out.println("          |");
+			System.out.println("          V");
+			System.out.println("");
+			System.out.println(pathNode.getMove());
+		}
+	}
+
+	System.out.println("");
+	System.out.println("Score: " + score);
+	System.out.println("-------------------------------------");
+    } 
+
+    private GameTreeNode createChild(GameTreeNode node, Move move) {
+   	AIModel newModel = node.model.copy();
+	newModel.turn(move);
+	return new GameTreeNode(newModel,move,node);
+    }
+
     //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
-    private double alphaBeta(GameTreeNode node, long startTime) {
+    private double alphaBeta(GameTreeNode node, double alpha, double beta, int currentDepth, int maxDepth) {
     
-	long time = System.currentTimeMillis();
-	System.out.println(time-startTime);
-	if(time - startTime >= 1500) {
-		node.setScore(score(node.model));
-		node.setValue(node.getScore());
-		return node.getScore();
-	} 
+	//long time = System.currentTimeMillis();
+	//printTree(node.getValue(),node);
+	if(currentDepth == maxDepth) return score(node.model);
 
 	Set<Move> validMoves = node.model.validMoves(node.model.getCurrentPlayer());
 	Iterator iterator = validMoves.iterator();
-	
-	if(node.isMaximizer() == true) {
-	
-		node.setValue(Double.NEGATIVE_INFINITY);
 		
 		for(int i = 1; i <= validMoves.size();i++) {
-			AIModel newModel = node.model.copy();
-			Move move = (Move) iterator.next();
-			newModel.turn(move);
+			GameTreeNode child = createChild(node,(Move) iterator.next());
+			node.addChild(child);
 			
-			GameTreeNode leafNode = new GameTreeNode(newModel);
-			leafNode.setMove(move);
-			node.addLeafNode(leafNode);
+			if(node.isMaximizer()) {
+				node.setValue(Math.max(alphaBeta(child, alpha, beta, currentDepth+1,maxDepth),node.getValue()));
+				alpha = Math.max(alpha, node.getValue());
 			
-			node.setValue(Math.max(alphaBeta(leafNode,startTime),node.getValue()));
-			node.setAlpha(Math.max(node.getAlpha(), node.getValue()));
-			
-			if(node.getBeta() <= node.getAlpha()) {
-				System.out.println("Branch pruned");
-				break;
+			} else { 
+				node.setValue(Math.min(alphaBeta(child,alpha,beta,currentDepth+1,maxDepth),node.getValue()));
+				beta = Math.min(beta,node.getValue());
 			}
+			if(beta <= alpha) break;			
 		}
 		return node.getValue();
-		
-	} else {
-		node.setValue(Double.POSITIVE_INFINITY);
-		
-		for(int j = 1; j <= validMoves.size();j++) {
-		
-			AIModel newModel = node.model.copy();
-			Move move = (Move) iterator.next();
-			newModel.turn(move);
-			
-			GameTreeNode leafNode = new GameTreeNode(newModel);
-			leafNode.setMove(move);
-			node.addLeafNode(leafNode);
-			
-			node.setValue(Math.min(alphaBeta(leafNode,startTime),node.getValue()));
-			node.setBeta(Math.min(node.getBeta(),node.getValue()));
-			
-			if(node.getBeta() <= node.getAlpha()) {
-				System.out.println("Branch pruned");
-				break;
-			}
-		}
-		return node.getValue();
-	}	
     }
 
 	// A rough board scoring function - weights of relatve components still

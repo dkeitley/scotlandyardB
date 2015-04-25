@@ -8,42 +8,45 @@ import solution.*;
 public class GameTreeNode {
 
 	protected AIModel model;
-	private Set<GameTreeNode> leafNodes;
-	private double score;
-	private Move move;
+	private Set<GameTreeNode> children;
+	private final GameTreeNode parent; 
+	private final Move move;
 	private double value;
-	private double alpha;
-	private double beta; 
 
-	public GameTreeNode(AIModel model) {
+
+	public GameTreeNode(AIModel model, Move move) {
 		this.model = model;
-		leafNodes = new HashSet<GameTreeNode>();
-		alpha = Double.NEGATIVE_INFINITY;
-		beta = Double.POSITIVE_INFINITY;
-	}
-
-	public void setScore(double score)  {
-		this.score = score;
-	}
-
-	public double getScore() {
-		return score;
-	}
-
-	public void setLeafNodes(Set<GameTreeNode> leafNodes) {
-		this.leafNodes = leafNodes;
-	}
-
-	public Set<GameTreeNode> getLeafNodes() {
-		return leafNodes;
-	}
-
-	public void addLeafNode(GameTreeNode node) {
-		leafNodes.add(node);
-	}
-
-	public void setMove(Move move) {
 		this.move = move;
+		children = new HashSet<GameTreeNode>();
+		parent = null;
+		if(isMaximizer()) value = Double.NEGATIVE_INFINITY;
+		else value = Double.POSITIVE_INFINITY;
+	}
+
+	public GameTreeNode(AIModel model, Move move, GameTreeNode node) {
+		this.model = model;
+		this.move = move;
+		children = new HashSet<GameTreeNode>();
+
+		if(isMaximizer()) value = Double.NEGATIVE_INFINITY;
+		else value = Double.POSITIVE_INFINITY;
+		parent = node;
+	}
+	
+	public GameTreeNode getParent() {
+		return parent;
+	}
+
+	public Set<GameTreeNode> getChildren() {
+		return children;
+	}
+
+	public void clearChildren() {
+		children.clear();
+	}
+
+	public void addChild(GameTreeNode node) {
+		children.add(node);
 	}
 
 	public Move getMove() {
@@ -56,22 +59,6 @@ public class GameTreeNode {
 
 	public void setValue(double value) {
 		this.value = value; 
-	}
-
-	public void setAlpha(double alpha) {
-		this.alpha = alpha;
-	}
-
-	public double getAlpha() {
-		return alpha;
-	}
-
-	public double getBeta() {
-		return beta; 
-	}
-
-	public void setBeta(double beta) {
-		this.beta = beta;
 	}
 
 	public boolean isMaximizer() {
