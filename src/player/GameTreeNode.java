@@ -27,7 +27,6 @@ public class GameTreeNode {
 		this.model = model;
 		this.move = move;
 		children = new HashSet<GameTreeNode>();
-
 		if(isMaximizer()) value = Double.NEGATIVE_INFINITY;
 		else value = Double.POSITIVE_INFINITY;
 		parent = node;
@@ -64,6 +63,10 @@ public class GameTreeNode {
 	public boolean isMaximizer() {
 		if(model.getCurrentPlayer().equals(Colour.Black)) return true;
 		else return false;
+	}
+	public void reset() {
+		children.clear();
+		value = Double.NEGATIVE_INFINITY;
 	}
 }
 

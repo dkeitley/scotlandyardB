@@ -70,17 +70,18 @@ class MyAIPlayer implements Player, Spectator
 	public Move notify(int location, Set<Move> moves)
 	{	
 		if(firstMove) firstMove(location);
-		rootNode.setValue(Double.NEGATIVE_INFINITY);
 		long time = System.currentTimeMillis();
 		double bestScore = 0;
-		while(System.currentTimeMillis() - time < 10000) {
+		while(System.currentTimeMillis() - time < 8000) {
+			rootNode.reset();
 			bestScore = alphaBeta(rootNode,Double.NEGATIVE_INFINITY,Double.POSITIVE_INFINITY,0);
+			System.out.println(bestScore);
 			visitedDepth++;
 		}
 		Move bestMove = findBestMove(bestScore);
 		System.out.println("Move to be played: " + bestMove + " " + bestScore);
 		System.out.println("Time taken: " + (System.currentTimeMillis() - time));
-		rootNode.clearChildren();
+		System.out.println("Depth reached: " + visitedDepth);
 		visitedDepth = 0;
 		rootNode.model.notify(bestMove);		
 		return bestMove;		
@@ -131,7 +132,6 @@ class MyAIPlayer implements Player, Spectator
 
     //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
     private double alphaBeta(GameTreeNode node, double alpha, double beta, int depth) {
-	
 	Set<Move> validMoves = node.model.validMoves(node.model.getCurrentPlayer());
 	int numMoves = validMoves.size();
 	Iterator iterator = validMoves.iterator();
