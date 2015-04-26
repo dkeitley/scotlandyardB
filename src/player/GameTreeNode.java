@@ -65,12 +65,5 @@ public class GameTreeNode {
 		if(model.getCurrentPlayer().equals(Colour.Black)) return true;
 		else return false;
 	}
-	
-
-	
-
-
-
-	
 }
 

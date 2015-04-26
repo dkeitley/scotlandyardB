@@ -2,7 +2,6 @@ package player;
 
 import java.util.*;
 import java.lang.Math;
-
 import scotlandyard.*;
 import solution.*;
 
@@ -27,21 +26,22 @@ class MyAIPlayer implements Player, Spectator
 	private GameTreeNode rootNode;
 	private String graphFilename;
 	private boolean firstMove;
-	private boolean alreadyNotified;
+	private int visitedDepth;
 
 	public MyAIPlayer(ScotlandYardView view, String graphFilename)
 	{
 		this.InitialView = view;
 		this.graphFilename = graphFilename;
 		firstMove = true;
-		alreadyNotified = false;
+		visitedDepth = 0;
+		
 	}
 	
 	//notifies the model that someone has made a move
 	public void notify(Move move)
 	{
-		if(alreadyNotified == true) {
-			alreadyNotified = false;
+		//System.out.println(scoreTime);
+		if(move.colour.equals(Colour.Black)) {
 			return;
 		} else {
 			rootNode.model.notify(move);
@@ -70,16 +70,19 @@ class MyAIPlayer implements Player, Spectator
 	public Move notify(int location, Set<Move> moves)
 	{	
 		if(firstMove) firstMove(location);
-
-		//long startTime = System.currentTimeMillis();
-		double bestScore = alphaBeta(rootNode,Double.NEGATIVE_INFINITY,Double.POSITIVE_INFINITY,0,2);
+		rootNode.setValue(Double.NEGATIVE_INFINITY);
+		long time = System.currentTimeMillis();
+		double bestScore = 0;
+		while(System.currentTimeMillis() - time < 10000) {
+			bestScore = alphaBeta(rootNode,Double.NEGATIVE_INFINITY,Double.POSITIVE_INFINITY,0);
+			visitedDepth++;
+		}
 		Move bestMove = findBestMove(bestScore);
 		System.out.println("Move to be played: " + bestMove + " " + bestScore);
-		
+		System.out.println("Time taken: " + (System.currentTimeMillis() - time));
 		rootNode.clearChildren();
-		rootNode.model.notify(bestMove);
-		alreadyNotified = true;
-		
+		visitedDepth = 0;
+		rootNode.model.notify(bestMove);		
 		return bestMove;		
     }
 
@@ -95,17 +98,15 @@ class MyAIPlayer implements Player, Spectator
     }
 
     //test function: prints the sequence of moves to get to the current node in game tree	
-    private void printTree(double score, GameTreeNode node) {
+    private void printTree(GameTreeNode node) {
+    	GameTreeNode original = node;
 	System.out.println("-------------------------------------");
-
 	List<GameTreeNode> route = new ArrayList<GameTreeNode>();
 	route.add(node);
-	
 	while(node.getParent()!=null) {
 		route.add(node.getParent());
 		node = node.getParent();
 	}
-
 	System.out.println(route.get(route.size()-2).getMove());
 	for(int i = route.size()-3; i>=0; i--) {
 		GameTreeNode pathNode = route.get(i);
@@ -117,9 +118,8 @@ class MyAIPlayer implements Player, Spectator
 			System.out.println(pathNode.getMove());
 		}
 	}
-
 	System.out.println("");
-	System.out.println("Score: " + score);
+	System.out.println("Score: " + score(original.model));
 	System.out.println("-------------------------------------");
     } 
 
@@ -130,36 +130,37 @@ class MyAIPlayer implements Player, Spectator
     }
 
     //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
-    private double alphaBeta(GameTreeNode node, double alpha, double beta, int currentDepth, int maxDepth) {
-    
-	//long time = System.currentTimeMillis();
-	//printTree(node.getValue(),node);
-	if(currentDepth == maxDepth) return score(node.model);
-
+    private double alphaBeta(GameTreeNode node, double alpha, double beta, int depth) {
+	
 	Set<Move> validMoves = node.model.validMoves(node.model.getCurrentPlayer());
+	int numMoves = validMoves.size();
 	Iterator iterator = validMoves.iterator();
-		
-		for(int i = 1; i <= validMoves.size();i++) {
-			GameTreeNode child = createChild(node,(Move) iterator.next());
-			node.addChild(child);
-			
-			if(node.isMaximizer()) {
-				node.setValue(Math.max(alphaBeta(child, alpha, beta, currentDepth+1,maxDepth),node.getValue()));
-				alpha = Math.max(alpha, node.getValue());
-			
-			} else { 
-				node.setValue(Math.min(alphaBeta(child,alpha,beta,currentDepth+1,maxDepth),node.getValue()));
-				beta = Math.min(beta,node.getValue());
-			}
-			if(beta <= alpha) break;			
+	if(depth == visitedDepth+1) {
+		//printTree(node);
+		return score(node.model);
+	}
+	for(int i = 1; i <= numMoves ;i++) {
+		GameTreeNode child = createChild(node,(Move) iterator.next());
+		node.addChild(child);
+		if(node.isMaximizer()) {
+			node.setValue(Math.max(alphaBeta(child, alpha, beta,depth + 1),
+			node.getValue()));
+			alpha = Math.max(alpha, node.getValue());
+		} else { 
+			node.setValue(Math.min(alphaBeta(child,alpha,beta,depth+1),
+			node.getValue()));
+			beta = Math.min(beta,node.getValue());
 		}
-		return node.getValue();
+		if(beta <= alpha) break;			
+	}
+	return node.getValue();
     }
 
 	// A rough board scoring function - weights of relatve components still
 	// to be sorted out
 	public double score(AIModel model)
 	{
+		
 		int mrXLocation = model.getMrXLocation();
 		List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
 		int closesedDetective = Collections.min(movesAwayFromDetectives);
@@ -179,6 +180,7 @@ class MyAIPlayer implements Player, Spectator
 			score += -1000;
 		else
 			score += 5 * closesedDetective;
+		
 		return score;
 	}
 
