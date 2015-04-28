@@ -67,16 +67,47 @@ public class MyAIPlayer implements Player, Spectator
 	//Selects best move based on the best score returned from minimax algorithm
 	public Move notify(int location, Set<Move> moves)
 	{	
-		if(firstMove) firstMove(location);
+		int depthEstimate;
+		if(firstMove) {
+			firstMove(location);
+			depthEstimate = estimateDepth(rootNode.model,location);
+		} else {
+			depthEstimate = estimateDepth(rootNode.model,rootNode.model.getMrXLocation());
+		}
+
 		long startTime = System.currentTimeMillis();
+		System.out.println("Depth Estimate: " + depthEstimate); 
 		double bestScore = alphaBeta(rootNode,Double.NEGATIVE_INFINITY,
-		Double.POSITIVE_INFINITY,0,4);
+		Double.POSITIVE_INFINITY,0,depthEstimate,startTime);
 		Move bestMove = findBestMove(bestScore);
 		System.out.println("Move to be played: " + bestMove + " " + bestScore);
+		System.out.println("Time expired: " + (System.currentTimeMillis()-startTime));
 		rootNode.model.turn(bestMove);
 		return bestMove;		
     }
 
+    //estimates a suitable depth based on the order of the nodes of player locations
+    private int estimateDepth(AIModel model, int mrXLocation) {
+    	List<Integer> nodeOrders = new ArrayList<Integer>();
+    	int sum = 0; 
+	for(Colour player : model.getPlayers()) {
+		int nodeOrder;
+		if(player.equals(Colour.Black)) {
+			nodeOrder = orderOfNode(mrXLocation);
+		} else nodeOrder = orderOfNode(model.getPlayerLocation(player));
+		nodeOrders.add(nodeOrder);
+		sum = sum + nodeOrder;
+	}
+	System.out.println(nodeOrders);
+	double average = sum/nodeOrders.size();
+	System.out.println(average);
+	if (average > 7) return 3;
+	else if (average > 5 && average < 7) return 4;
+	else if (average > 4 && average < 5) return 5;
+	else return 6;
+    }
+
+    //looks at children to find which score correlates to which move
     private Move findBestMove(double bestScore) {
 	Move bestMove = null;
 	for(GameTreeNode node : rootNode.getChildren()) {
@@ -87,6 +118,7 @@ public class MyAIPlayer implements Player, Spectator
 	return bestMove;
     }
 
+    //returns a GameTreeNode with the model a move ahead of its parent
     private GameTreeNode createChild(GameTreeNode node, Move move) {
 	AIModel newModel = node.model.copy();
 	newModel.turn(move);
@@ -97,7 +129,6 @@ public class MyAIPlayer implements Player, Spectator
     }
 
      //test function: prints the sequence of moves to get to the current node in game tree	
-
      private void printTree(GameTreeNode node) {
      	GameTreeNode original = node;
  	System.out.println("-------------------------------------");
@@ -124,9 +155,9 @@ public class MyAIPlayer implements Player, Spectator
    }	
 
     //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
-    private double alphaBeta(GameTreeNode node, double alpha, double beta, int depth, int maxDepth) {
+    private double alphaBeta(GameTreeNode node, double alpha, double beta, int depth, int maxDepth, long startTime) {
 	if(depth == maxDepth) {
-		if(depth == maxDepth) { 
+		if(depth == maxDepth || (System.currentTimeMillis()-startTime)>8000) { 
 			node.setValue(score(node.model));
 			printTree(node);
 			return node.getValue();
@@ -141,12 +172,10 @@ public class MyAIPlayer implements Player, Spectator
 			Move move = (Move) iterator.next();
 			GameTreeNode child = createChild(node,move);
 			node.addChild(child);
-			node.setValue(Math.max(alphaBeta(child,alpha,beta,depth+1,maxDepth),node.getValue()));
+			double childValue = alphaBeta(child,alpha,beta,depth+1,maxDepth,startTime);
+			node.setValue(Math.max(childValue,node.getValue()));
 			alpha = Math.max(alpha, node.getValue());
-			if(beta <= alpha) {
-				System.out.println("Branch pruned");
-				break; 
-			}
+			if(beta <= alpha) break;
 		}
 	} else {
 		node.setValue(Double.POSITIVE_INFINITY);
@@ -154,12 +183,10 @@ public class MyAIPlayer implements Player, Spectator
 			Move move = (Move) iterator.next();
 			GameTreeNode child = createChild(node,move);
 			node.addChild(child);
-			node.setValue(Math.min(alphaBeta(child,alpha,beta, depth+1,maxDepth),node.getValue()));
+			double childValue = alphaBeta(child,alpha,beta,depth+1,maxDepth,startTime);
+			node.setValue(Math.min(childValue,node.getValue()));
 			beta = Math.min(beta,node.getValue());
-			if(beta <= alpha) {
-				System.out.println("Branch pruned");
-				break; 
-			}
+			if(beta <= alpha)  break; 
 		}
 	}	
 	return node.getValue();
