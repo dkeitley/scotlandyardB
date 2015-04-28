@@ -69,12 +69,11 @@ public class MyAIPlayer implements Player, Spectator
 	{	
 		if(firstMove) firstMove(location);
 		long startTime = System.currentTimeMillis();
-		double lastScore = 0; 
-		double bestScore = 0; 
-		bestScore = alphaBeta(rootNode,0,3,startTime);
+		double bestScore = alphaBeta(rootNode,Double.NEGATIVE_INFINITY,
+		Double.POSITIVE_INFINITY,0,4);
 		Move bestMove = findBestMove(bestScore);
 		System.out.println("Move to be played: " + bestMove + " " + bestScore);
-		rootNode.model.notify(bestMove);
+		rootNode.model.turn(bestMove);
 		return bestMove;		
     }
 
@@ -97,13 +96,7 @@ public class MyAIPlayer implements Player, Spectator
 	return child;
     }
 
-    private void resetRoot() {
-	rootNode.setChildren(new HashSet<GameTreeNode>()); 
-	rootNode.setAlpha(Double.NEGATIVE_INFINITY);
-	rootNode.setBeta(Double.POSITIVE_INFINITY);
-    }
-
-	     //test function: prints the sequence of moves to get to the current node in game tree	
+     //test function: prints the sequence of moves to get to the current node in game tree	
 
      private void printTree(GameTreeNode node) {
      	GameTreeNode original = node;
@@ -131,14 +124,9 @@ public class MyAIPlayer implements Player, Spectator
    }	
 
     //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
-    private double alphaBeta(GameTreeNode node, int depth, int maxDepth, long startTime) {
-    	node.setAlpha(Double.NEGATIVE_INFINITY);
-    	node.setBeta(Double.POSITIVE_INFINITY);
+    private double alphaBeta(GameTreeNode node, double alpha, double beta, int depth, int maxDepth) {
 	if(depth == maxDepth) {
-		long time = System.currentTimeMillis();
-		if(time-startTime < 5) { 
-			maxDepth++;  
-		} else {
+		if(depth == maxDepth) { 
 			node.setValue(score(node.model));
 			printTree(node);
 			return node.getValue();
@@ -153,9 +141,12 @@ public class MyAIPlayer implements Player, Spectator
 			Move move = (Move) iterator.next();
 			GameTreeNode child = createChild(node,move);
 			node.addChild(child);
-			node.setValue(Math.max(alphaBeta(child,depth+1,maxDepth,startTime),node.getValue()));
-			node.setAlpha(Math.max(node.getAlpha(), node.getValue()));
-			if(node.getBeta() <= node.getAlpha()) {	break; }
+			node.setValue(Math.max(alphaBeta(child,alpha,beta,depth+1,maxDepth),node.getValue()));
+			alpha = Math.max(alpha, node.getValue());
+			if(beta <= alpha) {
+				System.out.println("Branch pruned");
+				break; 
+			}
 		}
 	} else {
 		node.setValue(Double.POSITIVE_INFINITY);
@@ -163,9 +154,12 @@ public class MyAIPlayer implements Player, Spectator
 			Move move = (Move) iterator.next();
 			GameTreeNode child = createChild(node,move);
 			node.addChild(child);
-			node.setValue(Math.min(alphaBeta(child,depth+1,maxDepth,startTime),node.getValue()));
-			node.setBeta(Math.min(node.getBeta(),node.getValue()));
-			if(node.getBeta() <= node.getAlpha()) break;
+			node.setValue(Math.min(alphaBeta(child,alpha,beta, depth+1,maxDepth),node.getValue()));
+			beta = Math.min(beta,node.getValue());
+			if(beta <= alpha) {
+				System.out.println("Branch pruned");
+				break; 
+			}
 		}
 	}	
 	return node.getValue();

@@ -113,18 +113,7 @@ class AIModel extends ScotlandYardModel
 	//like turn but deals with double move notifying 
 	public void notify (Move move)
 	{
-		System.out.println("Entered notify: " + move);
-		if(move instanceof MoveDouble) {
-			tempMoves.add(move);
-			turn(move);
-			
-		} else if (tempMoves.size() == 1) {
-			tempMoves.add(move);
-		} else if (tempMoves.size() == 2) {
-			tempMoves.clear();
-		} else {
-			turn(move);
-		}
+		turn(move);
 	}
 
 	public List<Move> getMovesPlayed()
