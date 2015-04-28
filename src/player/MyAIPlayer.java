@@ -24,10 +24,11 @@ public class MyAIPlayer implements Player, Spectator
 	private Graph<Integer, Route> graph;
 	private ScotlandYardView InitialView;
 	private AIModel currentGame;
-	private GameTreeNode rootNode;
 	private String graphFilename;
 	private boolean firstMove;
-	private boolean alreadyNotified;
+	private HashMap<Double, Move> firstMoves = new HashMap<Double, Move>();
+	private boolean timeUp;
+	private long startTime;
 
 	public MyAIPlayer(ScotlandYardView view, String graphFilename)
 	{
@@ -39,10 +40,13 @@ public class MyAIPlayer implements Player, Spectator
 	//notifies the model that someone has made a move
 	public void notify(Move move)
 	{
-		if(move.colour.equals(Colour.Black)) {
+		if(move.colour.equals(Colour.Black)) 
+		{
 			return;
-		} else {
-			rootNode.model.notify(move);
+		} 
+		else 
+		{
+			currentGame.notify(move);
 		}
 		//System.out.println("MrXLocation: " + rootNode.model.getMrXLocation());
 	}
@@ -60,137 +64,79 @@ public class MyAIPlayer implements Player, Spectator
 			System.err.println(e.getMessage());
 		}
 		currentGame = new AIModel(InitialView, graphFilename, mrXLocation);
-		rootNode = new GameTreeNode(currentGame);
 		firstMove = false;
 	}
 
 	//Selects best move based on the best score returned from minimax algorithm
 	public Move notify(int location, Set<Move> moves)
 	{	
-		int depthEstimate;
-		if(firstMove) {
-			firstMove(location);
-			depthEstimate = estimateDepth(rootNode.model,location);
-		} else {
-			depthEstimate = estimateDepth(rootNode.model,rootNode.model.getMrXLocation());
+		startTime = System.currentTimeMillis();
+		timeUp = false;
+		if(firstMove) firstMove(location);
+		Double score = 0.0;
+		Double previousScore = 0.0;
+		for(int i = 2; !timeUp; i++)
+		{
+			previousScore = score;
+			score = bestMove(currentGame, Colour.Black, Double.NEGATIVE_INFINITY, 0, i);
+			System.out.println("depth is " + (i - 1));
 		}
-
-		long startTime = System.currentTimeMillis();
-		System.out.println("Depth Estimate: " + depthEstimate); 
-		double bestScore = alphaBeta(rootNode,Double.NEGATIVE_INFINITY,
-		Double.POSITIVE_INFINITY,0,depthEstimate,startTime);
-		Move bestMove = findBestMove(bestScore);
-		System.out.println("Move to be played: " + bestMove + " " + bestScore);
-		System.out.println("Time expired: " + (System.currentTimeMillis()-startTime));
-		rootNode.model.turn(bestMove);
-		return bestMove;		
+		Move bestMove = firstMoves.get(previousScore);
+		System.out.println(bestMove);
+		System.out.println("time took -> " + (System.currentTimeMillis() - startTime));
+		currentGame.notify(bestMove);
+		return bestMove;
     }
-
-    //estimates a suitable depth based on the order of the nodes of player locations
-    private int estimateDepth(AIModel model, int mrXLocation) {
-    	List<Integer> nodeOrders = new ArrayList<Integer>();
-    	int sum = 0; 
-	for(Colour player : model.getPlayers()) {
-		int nodeOrder;
-		if(player.equals(Colour.Black)) {
-			nodeOrder = orderOfNode(mrXLocation);
-		} else nodeOrder = orderOfNode(model.getPlayerLocation(player));
-		nodeOrders.add(nodeOrder);
-		sum = sum + nodeOrder;
-	}
-	System.out.println(nodeOrders);
-	double average = sum/nodeOrders.size();
-	System.out.println(average);
-	if (average > 7) return 3;
-	else if (average > 5 && average < 7) return 4;
-	else if (average > 4 && average < 5) return 5;
-	else return 6;
-    }
-
-    //looks at children to find which score correlates to which move
-    private Move findBestMove(double bestScore) {
-	Move bestMove = null;
-	for(GameTreeNode node : rootNode.getChildren()) {
-		if(node.getValue() == bestScore) {
-			bestMove = node.getMove();
-		}
-	}
-	return bestMove;
-    }
-
-    //returns a GameTreeNode with the model a move ahead of its parent
-    private GameTreeNode createChild(GameTreeNode node, Move move) {
-	AIModel newModel = node.model.copy();
-	newModel.turn(move);
-	GameTreeNode child = new GameTreeNode(newModel);
-	child.setMove(move);
-	child.setParent(node);
-	return child;
-    }
-
-     //test function: prints the sequence of moves to get to the current node in game tree	
-     private void printTree(GameTreeNode node) {
-     	GameTreeNode original = node;
- 	System.out.println("-------------------------------------");
- 	List<GameTreeNode> route = new ArrayList<GameTreeNode>();
- 	route.add(node);
- 	while(node.getParent()!=null) {
- 		route.add(node.getParent());
- 		node = node.getParent();
- 	}
- 	System.out.println(route.get(route.size()-2).getMove());
- 	for(int i = route.size()-3; i>=0; i--) {
- 		GameTreeNode pathNode = route.get(i);
- 		if(!pathNode.getMove().equals(null)) {
- 			System.out.println("          |");
- 			System.out.println("          |");
- 			System.out.println("          V");
- 			System.out.println("");
- 			System.out.println(pathNode.getMove());
- 		}
- 	}
- 	System.out.println("");
- 	System.out.println("Score: " + score(original.model));
- 	System.out.println("-------------------------------------");
-   }	
-
-    //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
-    private double alphaBeta(GameTreeNode node, double alpha, double beta, int depth, int maxDepth, long startTime) {
-	if(depth == maxDepth) {
-		if(depth == maxDepth || (System.currentTimeMillis()-startTime)>8000) { 
-			node.setValue(score(node.model));
-			printTree(node);
-			return node.getValue();
-		}
-	}
-	Set<Move> validMoves = node.model.validMoves(node.model.getCurrentPlayer());
-	Iterator iterator = validMoves.iterator();
 	
-	if(node.isMaximizer()) {
-		node.setValue(Double.NEGATIVE_INFINITY);
-		for(int i = 1; i <= validMoves.size();i++) {
-			Move move = (Move) iterator.next();
-			GameTreeNode child = createChild(node,move);
-			node.addChild(child);
-			double childValue = alphaBeta(child,alpha,beta,depth+1,maxDepth,startTime);
-			node.setValue(Math.max(childValue,node.getValue()));
-			alpha = Math.max(alpha, node.getValue());
-			if(beta <= alpha) break;
+	private double bestMove(AIModel model, Colour colour, double currentExtreme, int depth, int maxDepth)
+	{
+		if(System.currentTimeMillis() - startTime > 12000) timeUp = true;
+		if(timeUp) return Double.NaN;
+		if(depth == maxDepth) return score(model);
+		if(colour.equals(colour.Black)) return cpuMove(model, currentExtreme, depth, maxDepth);
+		else return humanMove(model, currentExtreme, depth, maxDepth);
+	}
+	
+	private double cpuMove(AIModel model, double currentExtreme, int depth, int maxDepth)
+	{
+		double currentMaximum = Double.NEGATIVE_INFINITY;
+		for(Move move : model.validMoves(Colour.Black))
+		{
+			AIModel newModel = model.copy();
+			newModel.turn(move);
+			Double currentModel = bestMove(newModel, model.getCurrentPlayer(), currentMaximum, depth + 1, maxDepth);
+			if(depth == 0) firstMoves.put(currentModel, move);
+			if (currentModel > currentMaximum) currentMaximum = currentModel;
+			if(currentMaximum > currentExtreme) 
+			{
+				System.out.println("--------------pruined");
+				return currentMaximum;
+			}
+			else System.out.println("not pruined");
 		}
-	} else {
-		node.setValue(Double.POSITIVE_INFINITY);
-		for(int j = 1; j <= validMoves.size();j++) {
-			Move move = (Move) iterator.next();
-			GameTreeNode child = createChild(node,move);
-			node.addChild(child);
-			double childValue = alphaBeta(child,alpha,beta,depth+1,maxDepth,startTime);
-			node.setValue(Math.min(childValue,node.getValue()));
-			beta = Math.min(beta,node.getValue());
-			if(beta <= alpha)  break; 
+		if(timeUp) return Double.NaN;
+		return currentMaximum;
+	}
+	
+	private double humanMove(AIModel model, double currentExtreme, int depth, int maxDepth)
+	{
+		double currentMinimum = Double.POSITIVE_INFINITY;;
+		for(Move move : model.validMoves(Colour.Black))
+		{
+			AIModel newModel = model.copy();
+			newModel.turn(move);
+			Double currentModel = bestMove(newModel, model.getCurrentPlayer(), currentMinimum, depth + 1, maxDepth);
+			if (currentModel < currentMinimum) currentMinimum = currentModel;
+			if(currentMinimum < currentExtreme) 
+			{
+				System.out.println("---------------pruined");
+				return currentMinimum;
+			}
+			else System.out.println("not pruined");
 		}
-	}	
-	return node.getValue();
-    }
+		if(timeUp) return Double.NaN;
+		return currentMinimum;
+	}
 
 	// A rough board scoring function - weights of relatve components still
 	// to be sorted out
