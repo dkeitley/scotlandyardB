@@ -23,6 +23,7 @@ public class GameTreeNode
 	public void setParent(GameTreeNode node) { parent = node; }
 	public GameTreeNode getParent() { return parent; }
 	public void setChildren(Set<GameTreeNode> children) { this.children = children; }
+	public void clearChildren() { children.clear(); }
 	public Set<GameTreeNode> getChildren() { return children; }
 	public void addChild(GameTreeNode node) { children.add(node); }
 	public void setMove(Move move) { this.move = move; }

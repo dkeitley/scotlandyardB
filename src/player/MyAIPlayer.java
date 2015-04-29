@@ -157,7 +157,7 @@ public class MyAIPlayer implements Player, Spectator
     //Uses alpha-beta pruning to find the best game scenario using the set of validMoves
     private double alphaBeta(GameTreeNode node, double alpha, double beta, int depth, int maxDepth, long startTime) {
 	if(depth == maxDepth) {
-		if(depth == maxDepth || (System.currentTimeMillis()-startTime)>8000) { 
+		if(depth == maxDepth || (System.currentTimeMillis()-startTime)>9000) { 
 			node.setValue(score(node.model));
 			printTree(node);
 			return node.getValue();
@@ -198,9 +198,10 @@ public class MyAIPlayer implements Player, Spectator
 	{
 		int mrXLocation = model.getMrXLocation();
 		List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
-		int closesedDetective = Collections.min(movesAwayFromDetectives);
-		Set<Integer> possibleLoctions = possibleLocations(model);
+		int closestDetective = Collections.min(movesAwayFromDetectives);
+		Set<Integer> possibleLocations = possibleLocations(model);
 		double score = 0;
+		score += possibleMoves(model);
 		score += orderOfNode(mrXLocation);
 		score += adjacentNodeOrder(mrXLocation);
 		score -= distanceFromCenter(mrXLocation) / 100;
@@ -209,13 +210,17 @@ public class MyAIPlayer implements Player, Spectator
 		score += model.getPlayerTickets(Colour.Black, Ticket.Double);
 		score += possibleLoctions.size();
 		score += howSpreadOut(possibleLoctions) / 1000;
-		if (closesedDetective == 1)
+		if (closestDetective == 1)
 			score += -100;
-		else if (closesedDetective == 0)
+		else if (closestDetective == 0)
 			score += -1000;
 		else
 			score += 5 * closesedDetective;
 		return score;
+	}
+	private int possibleMoves(AI model) {
+		Set<Move> possibleMoves = model.validMoves(Colour.Black);
+		return possibleMoves.size();
 	}
 
 	// returns the order of @param node
