@@ -24,6 +24,7 @@ public class Tests
 		test6(); 
 		test7();
 		test8();
+		test9();
 		System.out.println("Finished tests");
 	}
 	
@@ -128,6 +129,17 @@ public class Tests
 		runTest("Depth test", model, validLocations);
 		return;
 	}
+	
+	//Stuck test - Game shouldn't 'freeze' when MrX cannot move. 
+		private static void test9()
+		{
+			Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(31, 16, 4, 0, 0);
+			TestModel model = ModelCreator.createModel(104, 88, 86, 116, 115, 89,mrXTickets);
+			Set<Integer> validLocations = new HashSet<Integer>();
+			validLocations.add(104);
+			runTest("Stuck test", model, validLocations);
+			return;
+		}
 	
 	
 	
