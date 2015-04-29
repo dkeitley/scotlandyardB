@@ -15,13 +15,14 @@ public class Tests
 	public static void main(String[] args)
 	{
 		System.out.println("Started tests");
-		test1();
+		/*test1();
 		test2();
 		test3();
 		test4();
 		System.out.println("tests to check for Errors started");
 		test5();
-		test6();
+		test6(); */
+		test7();
 		System.out.println("Finished tests");
 	}
 	
@@ -98,9 +99,21 @@ public class Tests
 		TestModel model = ModelCreator.createModel(21, 33, 10, 5, 6, 7, mrXTickets);
 		Set<Integer> validLocations = new HashSet<Integer>();
 		validLocations.add(21);
-		runTest("Dont make illegal move", model, validLocations);
+		runTest("Game halt test", model, validLocations);
 		return;
 	}
+	
+	//Trapped test - MrX played an impossible move to 199
+	private static void test7()
+	{
+		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(23, 17, 7, 0, 0);
+		TestModel model = ModelCreator.createModel(173, 187, 160, 174, 135, 171);
+		Set<Integer> validLocations = new HashSet<Integer>();
+		validLocations.add(188);
+		runTest("Trapped test", model, validLocations);
+		return;
+	}
+	
 	
 	private static void testCreatorHelper(TestModel model)
 	{
