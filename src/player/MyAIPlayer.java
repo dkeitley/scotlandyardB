@@ -72,6 +72,7 @@ public class MyAIPlayer implements Player, Spectator
 	{	
 		startTime = System.currentTimeMillis();
 		timeUp = false;
+		firstMoves.clear();
 		if(firstMove) firstMove(location);
 		Double score = 0.0;
 		Double previousScore = 0.0;
@@ -142,12 +143,14 @@ public class MyAIPlayer implements Player, Spectator
 	// to be sorted out
 	public double score(AIModel model)
 	{
+		if(model.getWinningPlayers().contains(Colour.Black)) return Double.POSITIVE_INFINITY;
+		else if(model.isGameOver()) return Double.NEGATIVE_INFINITY;
 		int mrXLocation = model.getMrXLocation();
 		List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
 		int closesedDetective = Collections.min(movesAwayFromDetectives);
 		Set<Integer> possibleLoctions = possibleLocations(model);
 		double score = 0;
-		score += orderOfNode(mrXLocation);
+		score += model.validMoves(Colour.Black).size() / 10;
 		score += adjacentNodeOrder(mrXLocation);
 		score -= distanceFromCenter(mrXLocation) / 100;
 		score += 2 * average(movesAwayFromDetectives);
@@ -155,12 +158,8 @@ public class MyAIPlayer implements Player, Spectator
 		score += model.getPlayerTickets(Colour.Black, Ticket.Double);
 		score += possibleLoctions.size();
 		score += howSpreadOut(possibleLoctions) / 1000;
-		if (closesedDetective == 1)
-			score += -100;
-		else if (closesedDetective == 0)
-			score += -1000;
-		else
-			score += 5 * closesedDetective;
+		if (closesedDetective == 1) score += -1000;
+		else score += 5 * closesedDetective;
 		return score;
 	}
 
