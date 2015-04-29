@@ -29,6 +29,7 @@ public class MyAIPlayer implements Player, Spectator
 	private HashMap<Double, Move> firstMoves = new HashMap<Double, Move>();
 	private boolean timeUp;
 	private long startTime;
+	private HashMap<Double, AIModel> playList = new HashMap<Double, AIModel>();
 
 	public MyAIPlayer(ScotlandYardView view, String graphFilename)
 	{
@@ -70,34 +71,52 @@ public class MyAIPlayer implements Player, Spectator
 	//Selects best move based on the best score returned from minimax algorithm
 	public Move notify(int location, Set<Move> moves)
 	{	
+		if(firstMove) firstMove(location);
+		if(!currentGame.validMoves(Colour.Black).equals(moves)) System.out.println("Models diaagree !!!!!!!!");
 		startTime = System.currentTimeMillis();
 		timeUp = false;
 		firstMoves.clear();
-		if(firstMove) firstMove(location);
 		if(moves.size() == 0) return MovePass.instance(Colour.Black);
 		Double score = 0.0;
 		Double previousScore = 0.0;
 		for(int i = 2; !timeUp; i++)
 		{
 			previousScore = score;
-			score = bestMove(currentGame, Colour.Black, Double.NEGATIVE_INFINITY, 0, i);
+			score = bestMove(currentGame, Colour.Black, Double.POSITIVE_INFINITY, 0, i);
 			System.out.println("depth is " + (i - 1));
 		}
 		Move bestMove = firstMoves.get(previousScore);
+		
+		System.out.println(previousScore);
 		currentGame.notify(bestMove);
 		return bestMove;
     }
 	
+	private Colour getPreviousPlayer(AIModel model)
+	{
+		List<Colour> colours = model.getPlayers();
+		Colour currentPlayer = model.getCurrentPlayer();
+		int playerNum = colours.indexOf(currentPlayer);
+		if(playerNum == 0) return colours.get(colours.size() - 1);
+		else return colours.get(playerNum - 1);
+	}
+	
 	private double bestMove(AIModel model, Colour colour, double currentExtreme, int depth, int maxDepth)
 	{
+		if(model.isGameOver())
+		{
+			if(model.getWinningPlayers().contains(Colour.Black)) return Double.POSITIVE_INFINITY;
+			else return Double.NEGATIVE_INFINITY;
+		}
 		if(System.currentTimeMillis() - startTime > 12000) timeUp = true;
 		if(timeUp) return Double.NaN;
 		if(depth == maxDepth) return score(model);
-		if(colour.equals(colour.Black)) return cpuMove(model, currentExtreme, depth, maxDepth);
-		else return humanMove(model, currentExtreme, depth, maxDepth);
+		if(colour.equals(colour.Black)) return cpuMove(model, currentExtreme, depth, maxDepth, false);
+		else if(getPreviousPlayer(model).equals(Colour.Black)) return humanMove(model, currentExtreme, depth, maxDepth, true);
+		else return humanMove(model, currentExtreme, depth, maxDepth, false);
 	}
 	
-	private double cpuMove(AIModel model, double currentExtreme, int depth, int maxDepth)
+	private double cpuMove(AIModel model, double currentExtreme, int depth, int maxDepth, boolean isParentMaximiser)
 	{
 		double currentMaximum = Double.NEGATIVE_INFINITY;
 		for(Move move : model.validMoves(Colour.Black))
@@ -107,16 +126,13 @@ public class MyAIPlayer implements Player, Spectator
 			Double currentModel = bestMove(newModel, newModel.getCurrentPlayer(), currentMaximum, depth + 1, maxDepth);
 			if(depth == 0) firstMoves.put(currentModel, move);
 			if (currentModel > currentMaximum) currentMaximum = currentModel;
-			if(currentMaximum > currentExtreme) 
-			{
-				return currentMaximum;
-			}
+			if(currentMaximum > currentExtreme && !isParentMaximiser) return currentMaximum;
 		}
 		if(timeUp) return Double.NaN;
 		return currentMaximum;
 	}
 	
-	private double humanMove(AIModel model, double currentExtreme, int depth, int maxDepth)
+	private double humanMove(AIModel model, double currentExtreme, int depth, int maxDepth, boolean isParentMaximiser)
 	{
 		double currentMinimum = Double.POSITIVE_INFINITY;;
 		for(Move move : model.validMoves(model.getCurrentPlayer()))
@@ -125,10 +141,7 @@ public class MyAIPlayer implements Player, Spectator
 			newModel.turn(move);
 			Double currentModel = bestMove(newModel, newModel.getCurrentPlayer(), currentMinimum, depth + 1, maxDepth);
 			if (currentModel < currentMinimum) currentMinimum = currentModel;
-			if(currentMinimum < currentExtreme) 
-			{
-				return currentMinimum;
-			}
+			if(currentMinimum < currentExtreme && isParentMaximiser) return currentMinimum;
 		}
 		if(timeUp) return Double.NaN;
 		return currentMinimum;
@@ -138,23 +151,32 @@ public class MyAIPlayer implements Player, Spectator
 	// to be sorted out
 	public double score(AIModel model)
 	{
-		if(model.getWinningPlayers().contains(Colour.Black)) return Double.POSITIVE_INFINITY;
-		else if(model.isGameOver()) return Double.NEGATIVE_INFINITY;
 		int mrXLocation = model.getMrXLocation();
 		List<Integer> movesAwayFromDetectives = movesAwayFromDetectives(mrXLocation, model);
 		int closesedDetective = Collections.min(movesAwayFromDetectives);
 		Set<Integer> possibleLoctions = possibleLocations(model);
-		double score = 0;
-		score += model.validMoves(Colour.Black).size() / 10;
-		score += adjacentNodeOrder(mrXLocation);
-		score -= distanceFromCenter(mrXLocation) / 100;
-		score += 2 * average(movesAwayFromDetectives);
-		score += model.getPlayerTickets(Colour.Black, Ticket.Secret);
-		score += model.getPlayerTickets(Colour.Black, Ticket.Double);
-		score += possibleLoctions.size();
-		score += howSpreadOut(possibleLoctions) / 1000;
-		if (closesedDetective == 1) score += -1000;
-		else score += 5 * closesedDetective;
+		
+		double validMoveScore = model.validMoves(Colour.Black).size() / 10;
+		float adjacentNodeOrderScore = adjacentNodeOrder(mrXLocation);
+		double fromCenterScore = - distanceFromCenter(mrXLocation) / 100;
+		double detectiveMoveAwayScore = 2 * average(movesAwayFromDetectives);
+		int secretScore = model.getPlayerTickets(Colour.Black, Ticket.Secret);
+		int doubleScore = 200 * model.getPlayerTickets(Colour.Black, Ticket.Double);
+		int possLocationScore = possibleLoctions.size();
+		double spreadOutScore = howSpreadOut(possibleLoctions) / 1000;
+		double ticketsScore = 0.0001 * model.getPlayerTickets(Colour.Black, Ticket.Bus) + 0.001 * model.getPlayerTickets(Colour.Black, Ticket.Underground);
+		int deteciveScore;
+		if (closesedDetective == 1) 
+		{
+			deteciveScore = -230;
+			if(average(movesAwayFromDetectives) <= 1.8) deteciveScore += -10000;
+		}
+		
+		else deteciveScore = 5 * closesedDetective;
+		
+		double score = validMoveScore + adjacentNodeOrderScore + fromCenterScore + detectiveMoveAwayScore + secretScore;
+		score += secretScore + doubleScore + possLocationScore + spreadOutScore + deteciveScore + ticketsScore;
+		
 		return score;
 	}
 
@@ -248,8 +270,7 @@ public class MyAIPlayer implements Player, Spectator
 			for (Edge<Integer, Route> edge : graph.getEdgesFrom(node))
 			{
 				Ticket ticketReqired = Ticket.fromRoute(edge.data());
-				if (ticketUsed.equals(ticketReqired)
-						|| ticketUsed.equals(Ticket.Secret))
+				if (ticketUsed.equals(ticketReqired) || ticketUsed.equals(Ticket.Secret))
 					newPossibleNodes.add(edge.target());
 			}
 		}
@@ -300,15 +321,18 @@ public class MyAIPlayer implements Player, Spectator
 		return (maxX - minX) * (maxY - minY);
 	}
 
-	// takes average of list of integers
+	// takes average of 3 smallest numbers
 	private double average(List<Integer> list)
 	{
 		int total = 0;
-		for (int num : list)
+		List<Integer> copy = new ArrayList<Integer>(list);
+		for(int i = 0; i < 3 ; i++)
 		{
-			total += num;
+			Integer min = Collections.min(copy);
+			copy.remove(min);
+			total += min;
 		}
-		return total / list.size();
+		return total / 3;
 	}
 
 	// finds the straight line distance a point is from the center
