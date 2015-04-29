@@ -15,14 +15,15 @@ public class Tests
 	public static void main(String[] args)
 	{
 		System.out.println("Started tests");
-		/*test1();
+		test1();
 		test2();
 		test3();
 		test4();
 		System.out.println("tests to check for Errors started");
 		test5();
-		test6(); */
+		test6(); 
 		test7();
+		test8();
 		System.out.println("Finished tests");
 	}
 	
@@ -107,12 +108,28 @@ public class Tests
 	private static void test7()
 	{
 		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(23, 17, 7, 0, 0);
-		TestModel model = ModelCreator.createModel(173, 187, 160, 174, 135, 171);
+		TestModel model = ModelCreator.createModel(173, 187, 160, 174, 135, 171,mrXTickets);
+		testCreatorHelper(model);
 		Set<Integer> validLocations = new HashSet<Integer>();
 		validLocations.add(188);
 		runTest("Trapped test", model, validLocations);
 		return;
 	}
+	
+	//Depth test - Alpha-Beta reached a depth of 22
+	private static void test8()
+	{
+		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(31, 16, 4, 0, 0);
+		TestModel model = ModelCreator.createModel(187, 171, 188, 175, 135, 142,mrXTickets);
+		Set<Integer> validLocations = new HashSet<Integer>();
+		validLocations.add(172);
+		validLocations.add(185);
+		validLocations.add(198);
+		runTest("Depth test", model, validLocations);
+		return;
+	}
+	
+	
 	
 	
 	private static void testCreatorHelper(TestModel model)
