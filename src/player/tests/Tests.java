@@ -31,7 +31,7 @@ public class Tests
 	private static void test1()
 	{
 		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(4, 4, 4, 0, 0);
-		TestModel model = ModelCreator.createModel(43, 44, 74, 15, 5, 6, mrXTickets);
+		TestModel model = ModelCreator.createModel(43, 44, 74, 15, 5, 8, mrXTickets);
 		Set<Integer> validLocations = new HashSet<Integer>();
 		validLocations.add(57);
 		runTest("Corner case", model, validLocations);
@@ -73,7 +73,7 @@ public class Tests
 		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(4, 4, 4, 0, 0);
 		TestModel model = ModelCreator.createModel(10, 22, 23, 13, 51, 33, mrXTickets);
 		Set<Integer> validLocations = new HashSet<Integer>();
-		validLocations.add(4);
+		validLocations.add(2);
 		runTest("Dont get caught test from gameplay", model, validLocations);
 		return;
 	}

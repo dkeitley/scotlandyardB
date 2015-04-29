@@ -74,17 +74,16 @@ public class MyAIPlayer implements Player, Spectator
 		timeUp = false;
 		firstMoves.clear();
 		if(firstMove) firstMove(location);
+		if(moves.size() == 0) return MovePass.instance(Colour.Black);
 		Double score = 0.0;
 		Double previousScore = 0.0;
 		for(int i = 2; !timeUp; i++)
 		{
 			previousScore = score;
 			score = bestMove(currentGame, Colour.Black, Double.NEGATIVE_INFINITY, 0, i);
-			System.out.println("depth is " + (i - 1));
+			//System.out.println("depth is " + (i - 1));
 		}
 		Move bestMove = firstMoves.get(previousScore);
-		System.out.println(bestMove);
-		System.out.println("time took -> " + (System.currentTimeMillis() - startTime));
 		currentGame.notify(bestMove);
 		return bestMove;
     }
@@ -93,7 +92,12 @@ public class MyAIPlayer implements Player, Spectator
 	{
 		if(System.currentTimeMillis() - startTime > 12000) timeUp = true;
 		if(timeUp) return Double.NaN;
-		if(depth == maxDepth) return score(model);
+		if(depth == maxDepth) 
+		{
+			//System.out.println("score: " + score(model) + " with move " + model.getMovesPlayed().get(model.getMovesPlayed().size() - 2) + " then " + model.getMovesPlayed().get(model.getMovesPlayed().size() - 1));
+			//System.out.println(model.getMovesPlayed());
+			return score(model);
+		}
 		if(colour.equals(colour.Black)) return cpuMove(model, currentExtreme, depth, maxDepth);
 		else return humanMove(model, currentExtreme, depth, maxDepth);
 	}
@@ -105,15 +109,13 @@ public class MyAIPlayer implements Player, Spectator
 		{
 			AIModel newModel = model.copy();
 			newModel.turn(move);
-			Double currentModel = bestMove(newModel, model.getCurrentPlayer(), currentMaximum, depth + 1, maxDepth);
+			Double currentModel = bestMove(newModel, newModel.getCurrentPlayer(), currentMaximum, depth + 1, maxDepth);
 			if(depth == 0) firstMoves.put(currentModel, move);
 			if (currentModel > currentMaximum) currentMaximum = currentModel;
 			if(currentMaximum > currentExtreme) 
 			{
-				System.out.println("--------------pruined");
 				return currentMaximum;
 			}
-			else System.out.println("not pruined");
 		}
 		if(timeUp) return Double.NaN;
 		return currentMaximum;
@@ -122,18 +124,16 @@ public class MyAIPlayer implements Player, Spectator
 	private double humanMove(AIModel model, double currentExtreme, int depth, int maxDepth)
 	{
 		double currentMinimum = Double.POSITIVE_INFINITY;;
-		for(Move move : model.validMoves(Colour.Black))
+		for(Move move : model.validMoves(model.getCurrentPlayer()))
 		{
 			AIModel newModel = model.copy();
 			newModel.turn(move);
-			Double currentModel = bestMove(newModel, model.getCurrentPlayer(), currentMinimum, depth + 1, maxDepth);
+			Double currentModel = bestMove(newModel, newModel.getCurrentPlayer(), currentMinimum, depth + 1, maxDepth);
 			if (currentModel < currentMinimum) currentMinimum = currentModel;
 			if(currentMinimum < currentExtreme) 
 			{
-				System.out.println("---------------pruined");
 				return currentMinimum;
 			}
-			else System.out.println("not pruined");
 		}
 		if(timeUp) return Double.NaN;
 		return currentMinimum;
@@ -202,8 +202,7 @@ public class MyAIPlayer implements Player, Spectator
 				Set<Edge<Integer, Route>> edges = graph.getEdgesFrom(location);
 				for (Edge<Integer, Route> edge : edges)
 				{
-					if (visited.contains(edge.target())
-							|| edge.data().equals(Route.Boat))
+					if (visited.contains(edge.target()) || edge.data().equals(Route.Boat))
 						continue;
 					tempLocations.add(edge.target());
 				}
