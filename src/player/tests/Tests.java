@@ -15,15 +15,21 @@ public class Tests
 	public static void main(String[] args)
 	{
 		System.out.println("Started tests");
-		test1();
+		/*test1();
 		test2();
 		test3();
 		test4();
 		System.out.println("tests to check for Errors started");
 		test5();
-		test6(); 
+		test6();
 		test7();
 		test8();
+		test9();
+		test10();*/
+		test11();
+		/*test12();
+		test13();
+		test14();*/
 		System.out.println("Finished tests");
 	}
 	
@@ -109,14 +115,13 @@ public class Tests
 	{
 		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(23, 17, 7, 0, 0);
 		TestModel model = ModelCreator.createModel(173, 187, 160, 174, 135, 171,mrXTickets);
-		testCreatorHelper(model);
 		Set<Integer> validLocations = new HashSet<Integer>();
 		validLocations.add(188);
 		runTest("Trapped test", model, validLocations);
 		return;
 	}
 	
-	//Depth test - Alpha-Beta reached a depth of 22
+	//Depth test - Alpha-Beta reached a depth of 22 - this is questionable !!!!
 	private static void test8()
 	{
 		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(31, 16, 4, 0, 0);
@@ -129,8 +134,81 @@ public class Tests
 		return;
 	}
 	
+	//mrX tells us he is playing a  move that make him take a secret move to where is currently is 
+	private static void test9()
+	{
+		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(18, 7, 6, 0, 4);
+		TestModel model = ModelCreator.createModel(77, 124, 79, 111, 66, 46, mrXTickets);
+		Set<Integer> validLocations = new HashSet<Integer>();
+		validLocations.add(95);
+		validLocations.add(96);
+		validLocations.add(76);
+		validLocations.add(78);
+		validLocations.add(94);
+		runTest("not move test", model, validLocations);
+		return;
+	}
 	
+	//Double move test 1 - Makes a double move because he is forced to. 
+	private static void test10()
+	{
+		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(18, 7, 6, 2, 4);
+		TestModel model = ModelCreator.createModel(170, 156, 186, 184, 193, 158, mrXTickets);
+		Set<Integer> validLocations = new HashSet<Integer>();
+		validLocations.add(115);
+		runTest("Forced double move", model, validLocations);
+		return;
+	}
 	
+	//Double move test 2 - Double backs on itself
+	private static void test11()
+	{
+		Map<Ticket,Integer> mrXTickets= ModelCreator.createMrXTicketMap(18, 7, 6, 2, 4);
+		TestModel model = ModelCreator.createModel(162, 108, 161, 174, 135, 199, mrXTickets);
+		testCreatorHelper(model);
+		Set<Integer> validLocations = new HashSet<Integer>();
+		validLocations.add(162);
+		runTest("Double back on self", model, validLocations);
+		return;
+	}
+	
+	//puts mrX in a move where he should clearly make a double move
+		private static void test12()
+		{
+			TestModel model = ModelCreator.createModel(43, 8, 44, 58, 5, 16);
+			testCreatorHelper(model);
+			Set<Integer> validLocations = new HashSet<Integer>();
+			validLocations.add(73);
+			runTest("use double move when should", model, validLocations);
+			return;
+		}
+		
+		//use single move when should - i.e. not double move
+		private static void test13()
+		{
+			TestModel model = ModelCreator.createModel(63, 35, 62, 58, 66, 6);
+			Set<Integer> validLocations = new HashSet<Integer>();
+			validLocations.add(64);
+			validLocations.add(65);
+			validLocations.add(34);
+			validLocations.add(100);
+			validLocations.add(79);
+			validLocations.add(80);
+			validLocations.add(48);
+			runTest("use double move when should", model, validLocations);
+			return;
+		}
+		
+		private static void test14()
+		{
+			Map<Ticket,Integer> mrXTickets = ModelCreator.createMrXTicketMap(25, 5, 12, 1, 2);
+			TestModel model = ModelCreator.createModel(98, 46, 93, 122, 111, 163, mrXTickets);
+			Set<Integer> validLocations = new HashSet<Integer>();
+			validLocations.add(97);
+			validLocations.add(99);
+			runTest("use double move when should", model, validLocations);
+			return;
+		}
 	
 	private static void testCreatorHelper(TestModel model)
 	{
