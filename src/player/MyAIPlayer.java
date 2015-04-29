@@ -81,7 +81,7 @@ public class MyAIPlayer implements Player, Spectator
 		{
 			previousScore = score;
 			score = bestMove(currentGame, Colour.Black, Double.NEGATIVE_INFINITY, 0, i);
-			//System.out.println("depth is " + (i - 1));
+			System.out.println("depth is " + (i - 1));
 		}
 		Move bestMove = firstMoves.get(previousScore);
 		currentGame.notify(bestMove);
@@ -92,12 +92,7 @@ public class MyAIPlayer implements Player, Spectator
 	{
 		if(System.currentTimeMillis() - startTime > 12000) timeUp = true;
 		if(timeUp) return Double.NaN;
-		if(depth == maxDepth) 
-		{
-			//System.out.println("score: " + score(model) + " with move " + model.getMovesPlayed().get(model.getMovesPlayed().size() - 2) + " then " + model.getMovesPlayed().get(model.getMovesPlayed().size() - 1));
-			//System.out.println(model.getMovesPlayed());
-			return score(model);
-		}
+		if(depth == maxDepth) return score(model);
 		if(colour.equals(colour.Black)) return cpuMove(model, currentExtreme, depth, maxDepth);
 		else return humanMove(model, currentExtreme, depth, maxDepth);
 	}
