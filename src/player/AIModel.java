@@ -23,7 +23,6 @@ class AIModel extends ScotlandYardModel
 	public AIModel(ScotlandYardView view, String graphFilename, int mrXLocation)
 	{
 		super(view.getPlayers().size() - 1, view.getRounds(), graphFilename);
-		
 		List<Colour> colours = view.getPlayers();
 		Set<Ticket> ticketTypes = new HashSet<Ticket>();
 		ticketTypes.add(Ticket.Taxi);
@@ -55,7 +54,7 @@ class AIModel extends ScotlandYardModel
 		this.tempMoves = new ArrayList<Move>();
 	}
 	
-	//copys this AI model
+	//copys this AI model by creating a new one and playing moves
 	public AIModel copy()
 	{
 		AIModel modelCopy = new AIModel(Initialview, graphFilename, initialMrXLocation);
@@ -109,19 +108,12 @@ class AIModel extends ScotlandYardModel
 		play(move);
 		nextPlayer();
 	}
-	
-	//like turn but deals with double move notifying 
-	public void notify (Move move)
-	{
-		turn(move);
-	}
 
 	public List<Move> getMovesPlayed()
 	{
 		return movesPlayed;
 	}
 	
-
 	public int getMrXLocation()
 	{
 		return mrXLocation;

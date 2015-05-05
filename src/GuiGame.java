@@ -60,12 +60,12 @@ public class GuiGame {
 
         PlayerFactory factory = new AIPlayerFactory(typeMap, imageFilename, positionsFilename);
         ScotlandYard game = new ScotlandYardModel(5, rounds, graphFilename);
-        game.join(factory.player(Colour.Black,  game, graphFilename), Colour.Black, 186, mrXTickets);
-        game.join(factory.player(Colour.Blue,   game, graphFilename), Colour.Blue, 155, new HashMap<Ticket, Integer>(detectiveXTickets));
-        game.join(factory.player(Colour.Green,  game, graphFilename), Colour.Green, 15, new HashMap<Ticket, Integer>(detectiveXTickets));
-        game.join(factory.player(Colour.Red,    game, graphFilename), Colour.Red, 6, new HashMap<Ticket, Integer>(detectiveXTickets));
-        game.join(factory.player(Colour.Yellow, game, graphFilename), Colour.Yellow, 167, new HashMap<Ticket, Integer>(detectiveXTickets));
-        game.join(factory.player(Colour.White,  game, graphFilename), Colour.White, 5, new HashMap<Ticket, Integer>(detectiveXTickets));
+        game.join(factory.player(Colour.Black,  game, graphFilename), Colour.Black, 123, mrXTickets);
+        game.join(factory.player(Colour.Blue,   game, graphFilename), Colour.Blue, 78, new HashMap<Ticket, Integer>(detectiveXTickets));
+        game.join(factory.player(Colour.Green,  game, graphFilename), Colour.Green, 168, new HashMap<Ticket, Integer>(detectiveXTickets));
+        game.join(factory.player(Colour.Red,    game, graphFilename), Colour.Red, 189, new HashMap<Ticket, Integer>(detectiveXTickets));
+        game.join(factory.player(Colour.Yellow, game, graphFilename), Colour.Yellow, 64, new HashMap<Ticket, Integer>(detectiveXTickets));
+        game.join(factory.player(Colour.White,  game, graphFilename), Colour.White, 186, new HashMap<Ticket, Integer>(detectiveXTickets));
 
 
         for (Spectator spec : factory.getSpectators(game))

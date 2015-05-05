@@ -6,17 +6,8 @@ import java.lang.Math;
 import scotlandyard.*;
 import solution.*;
 
-/* An AI to play as MrX X in a game of ScotlandYardModel currently 
- * the AI makes random moves. A function that scores the board is
- * implemented but not currently used. DAN - talk to me about the MrXMoves 
- * param of score - its implementaton is important!!!!! 
- */
+// An AI to play as MrX X in a game of ScotlandYard
 
-/*Current Issues
- * 1) Currently manually entered first Mr X location as location not know until notify
- * 2) Game time outs after 'Interrupted Exception'. 
- * 3) Need to tidy up, add comments etc. 
- */
 
 public class MyAIPlayer implements Player, Spectator
 {
@@ -29,30 +20,24 @@ public class MyAIPlayer implements Player, Spectator
 	private HashMap<Double, Move> firstMoves = new HashMap<Double, Move>();
 	private boolean timeUp;
 	private long startTime;
-	private HashMap<Double, AIModel> playList = new HashMap<Double, AIModel>();
 
 	public MyAIPlayer(ScotlandYardView view, String graphFilename)
 	{
+		System.out.println(view.isGameOver());
 		this.InitialView = view;
 		this.graphFilename = graphFilename;
 		firstMove = true;
 	}
 	
-	//notifies the model that someone has made a move
+	//notifies the model that a detective has made a move
 	public void notify(Move move)
 	{
-		if(move.colour.equals(Colour.Black)) 
-		{
-			return;
-		} 
-		else 
-		{
-			currentGame.notify(move);
-		}
-		//System.out.println("MrXLocation: " + rootNode.model.getMrXLocation());
+		if(!move.colour.equals(Colour.Black)) currentGame.turn(move);
+		return;
 	}
 	
-	//function to set up model on first move
+	//function to set up model on first move - i.e first call of notify by the 
+	//CS dept. client model
 	private void firstMove(int mrXLocation)
 	{
 		ScotlandYardGraphReader reader = new ScotlandYardGraphReader();
@@ -68,30 +53,28 @@ public class MyAIPlayer implements Player, Spectator
 		firstMove = false;
 	}
 
-	//Selects best move based on the best score returned from minimax algorithm
+	//Selects best move based on the best score returned from alpha-beta algorithm
+	//and notifies our internal model of the move
 	public Move notify(int location, Set<Move> moves)
 	{	
-		if(firstMove) firstMove(location);
-		if(!currentGame.validMoves(Colour.Black).equals(moves)) System.out.println("Models diaagree !!!!!!!!");
 		startTime = System.currentTimeMillis();
+		if(firstMove) firstMove(location);
+		if(moves.size() == 0) return MovePass.instance(Colour.Black);
 		timeUp = false;
 		firstMoves.clear();
-		if(moves.size() == 0) return MovePass.instance(Colour.Black);
 		Double score = 0.0;
 		Double previousScore = 0.0;
 		for(int i = 2; !timeUp; i++)
 		{
 			previousScore = score;
 			score = bestMove(currentGame, Colour.Black, Double.POSITIVE_INFINITY, 0, i);
-			System.out.println("depth is " + (i - 1));
 		}
 		Move bestMove = firstMoves.get(previousScore);
-		
-		System.out.println(previousScore);
-		currentGame.notify(bestMove);
+		currentGame.turn(bestMove);
 		return bestMove;
     }
 	
+	//gets the player that last made a move
 	private Colour getPreviousPlayer(AIModel model)
 	{
 		List<Colour> colours = model.getPlayers();
@@ -101,10 +84,15 @@ public class MyAIPlayer implements Player, Spectator
 		else return colours.get(playerNum - 1);
 	}
 	
+	//calls CPUMove or humanMove depending on who's go it is and keeps track of time
+	// and depth of tree and if game has been won
 	private double bestMove(AIModel model, Colour colour, double currentExtreme, int depth, int maxDepth)
 	{
+		//System.out.println("in best move");
+		//System.out.println(System.currentTimeMillis() - startTime);
 		if(model.isGameOver())
 		{
+			//System.out.println("enetered game is over");
 			if(model.getWinningPlayers().contains(Colour.Black)) return Double.POSITIVE_INFINITY;
 			else return Double.NEGATIVE_INFINITY;
 		}
@@ -116,6 +104,7 @@ public class MyAIPlayer implements Player, Spectator
 		else return humanMove(model, currentExtreme, depth, maxDepth, false);
 	}
 	
+	//Simulates what MrX wants to do i.e. chooses the highest scoring move passes up to it
 	private double cpuMove(AIModel model, double currentExtreme, int depth, int maxDepth, boolean isParentMaximiser)
 	{
 		double currentMaximum = Double.NEGATIVE_INFINITY;
@@ -132,6 +121,7 @@ public class MyAIPlayer implements Player, Spectator
 		return currentMaximum;
 	}
 	
+	//Simulates what detective wants to do i.e. chooses the lowest scoring move passes up to it
 	private double humanMove(AIModel model, double currentExtreme, int depth, int maxDepth, boolean isParentMaximiser)
 	{
 		double currentMinimum = Double.POSITIVE_INFINITY;;
@@ -147,8 +137,7 @@ public class MyAIPlayer implements Player, Spectator
 		return currentMinimum;
 	}
 
-	// A rough board scoring function - weights of relatve components still
-	// to be sorted out
+	//scores a board from point of view of MrX
 	public double score(AIModel model)
 	{
 		int mrXLocation = model.getMrXLocation();
