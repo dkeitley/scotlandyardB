@@ -4,7 +4,7 @@ This repository contains a computer game adaptation of the board game [Scotland 
 
 The game can be played locally or online against an AI, implemented using a variety of techniques from game theory and artificial intelligence (see 'Implementation of Mr X' below). 
 
-A previous iteration of this project, which contains more in-depth source code for the implementation of the Scotland Yard game, can be found at <https://github.com/dkeitley/scotlandyardA>.
+A previous iteration of this project can be found at <https://github.com/dkeitley/scotlandyardA>.
 
 
 
